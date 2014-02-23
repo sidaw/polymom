@@ -1,0 +1,62 @@
+addpath(genpath('../lib/sedumi/'))
+addpath(genpath('../lib/gloptipoly3/'))
+clc
+echo on
+% Short demo of Gloptipoly 3
+%
+% Consider the classical problem of minimizing globally the
+% two-dimensional six-hump camel back function 
+%
+% min g0(x) = 4x1^2+x1x2-4x2^2-2.1x1^4+4x2^4+x1^6/3 
+%
+% The function has six local minima, two of them being global minima.
+%
+% This optimization problem can be modeled as a moment
+% problem as follows.
+%
+% First we define the variables
+% and the polynomial to be minimized
+
+% mpol x1 x2
+% g0 = 4*x1^2+x1*x2-4*x2^2-2.1*x1^4+4*x2^4+x1^6/3
+
+mpol pi1;
+mu = [0.8 0.2];
+pis = [0.4 0.6];
+M1 = [sum(pis.*mu) sum(pis.*mu.^2) sum(pis.*mu.^3) sum(pis.*mu.^4) sum(pis.*mu.^5)];
+mpol mu1 mu2 pi1 pi2
+g0 = 0;
+for i = 1:4
+g0 = (pi1*mu1^i + pi2*mu2^i - M1(i) )^2 + (1-pi1 - pi2)^2 + g0
+end
+% 
+% g0 = 4*x1^2+x1*x2-4*x2^2-2.1*x1^4+4*x2^4+x1^6/3
+% g0 = 0;
+% for i = 1:4
+% g0 = (s(i)-r*y.^(mod(i,5)))^2 + g0
+% end
+
+
+%pause % Strike any key to continue.
+
+% Then we define the optimization problem
+
+P = msdp(min(g0))
+%pause % Strike any key to continue.
+
+% Once the moment problem is modeled, a semidefinite solver can be used to
+% solve it numerically with the command [status,obj] = msol(P)
+
+%pause % Strike any key to continue.
+
+[status,obj] = msol(P)                       
+%pause % Strike any key to continue.
+
+status
+
+% This means that the moment problem is solved successfully
+% that GloptiPoly can extract two globally optimal
+% solutions reaching the objective function: 
+
+obj
+x = double([mu1 mu2 pi1 pi2])
