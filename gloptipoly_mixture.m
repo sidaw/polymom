@@ -1,6 +1,6 @@
 addpath(genpath('../lib/sedumi/'))
-addpath(genpath('../lib/gloptipoly3/'))
-clc
+addpath(genpath('../lib/gloptipoly3/*'))
+addpath(genpath('../lib/gloptipoly3/@msdp'))
 echo on
 % Short demo of Gloptipoly 3
 %
