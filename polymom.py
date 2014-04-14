@@ -1,9 +1,12 @@
 #!/usr/bin/env python2.7
-# 
+"""
+Learning latent variable models using polynomial optimization
+"""
 
 import random
 from sympy import symbols, poly
 import numpy as np
+from util import tuple_add
 
 def generate_moments(hyper, params):
     """
@@ -28,7 +31,6 @@ def generate_poly(hyper, params):
     """
 
     k, d = hyper['k'], hyper['d']
-
     atoms = { 
                 (h,) : symbols('h_%d'%h)
                 for h in xrange(1, k)
@@ -86,26 +88,8 @@ def create_mom_poly(p,m):
     basis = sorted(basis)
     return basis, pol
 
-def tuple_add(t1, t2):
-    return tuple( t1[i] + t2[i] for i in xrange(len(t1)) )
-
-def find_coeffs(basis, pol):
-    """Construct matrix of coefficients"""
-    coeffs = pol.coeffs()
-    monoms = pol.monoms()
-
-    # Fill in the coefficients
-    p = len(basis)
-    A = np.zeros((p,p))
-    for i in xrange(p):
-        for j in xrange(p):
-            basis_ = tuple_add(basis[i], basis[j])
-            A[i,j] = coeffs[monoms.index(basis_)]
-    return A
-
 def generate_cvx(A):
     """Generate the CVX program from the matrix of coefficients A"""
-
     template = """
 # Auto-generated script 
 # TODO: populate program
