@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 """
-Learning latent variable models using polynomial optimization
+Test when given pi
 """
 
 import random
@@ -33,12 +33,8 @@ def generate_poly(hyper, params):
     """
 
     k, d = hyper['k'], hyper['d']
-    atoms = { 
-                (h,) : symbols('h_%d'%h)
-                for h in xrange(1, k+1)
-            }
-    #atoms[(k,)] = 1. - sum( symbols('h_%d'%h) for h in xrange(1, k) )
 
+    atoms = {}
     for h in xrange(1,k+1):
         atoms.update({ 
                 (h,x1) : symbols('x_%d%d'%(h,x1))
@@ -48,11 +44,11 @@ def generate_poly(hyper, params):
 
     m = {}
     for x1 in xrange(1,d+1):
-        m[(x1,)] = poly( sum( atoms[(h,x1)] * atoms[(h,)] for h in xrange(1,k+1) ) )
+        m[(x1,)] = poly( sum( atoms[(h,x1)] * params[(h,)] for h in xrange(1,k+1) ) )
         for x2 in xrange(1,d+1):
-            m[(x1,x2)] = poly( sum( atoms[(h,x1)] * atoms[(h,x2)] * atoms[(h,)] for h in xrange(1,k+1) ) )
+            m[(x1,x2)] = poly( sum( atoms[(h,x1)] * atoms[(h,x2)] * params[(h,)] for h in xrange(1,k+1) ) )
             for x3 in xrange(1,d+1):
-                m[(x1,x2,x3)] = poly( sum( atoms[(h,x1)] * atoms[(h,x2)] * atoms[(h,x3)] * atoms[(h,)] for h in xrange(1,k+1) ) )
+                m[(x1,x2,x3)] = poly( sum( atoms[(h,x1)] * atoms[(h,x2)] * atoms[(h,x3)] * params[(h,)] for h in xrange(1,k+1) ) )
 
     return m
 
@@ -86,11 +82,19 @@ def create_mom_poly(p,m):
     return pol
 
 def do_generate(args):
-    hyper = { 'k': args.k, 'd' : args.d, 'v' : args.v }
-
-    # TODO: Support arbitrary number of moments.
-    if hyper['v'] != 3: 
-        raise NotImplementedError() 
+    K, D = 2, 2
+    hyper = {
+            'k' : K,
+            'd' : D,
+            }
+    params = {
+            (1,) : 0.4,
+            (2,) : 0.6,
+            (1,1) : 1,
+            (1,2) : 0,
+            (2,1) : 0,
+            (2,2) : 1,
+            }
 
     params = generate_parameters(hyper)
     params_pol = generate_poly(hyper, params)
@@ -98,24 +102,16 @@ def do_generate(args):
     pol = create_mom_poly(params_pol,mom)
     sol = polyopt.optimize_polynomial(pol)
 
-    print sol
+    m = pol.monoms()
+
+    print zip(m[:(K+K*D)], sol['x'][:(K+K*D)])
     return sol
-
-def apply_permutation(hyper, pol, perm):
-    """
-    For every symbol p_{i}, applies the permutation p_{\sigma(i)}
-    Special case to handle p_k -> 1 - {p_1, ..., p_{k-1}}
-    """
-    pass
-
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser( description='Generate moment constraints for a three-view mixture model' )
-    parser.add_argument( '-k', type=int, default=2, help="Latent dimension" )
-    parser.add_argument( '-d', type=int, default=2, help="Observed dimension" )
-    parser.add_argument( '-v', type=int, default=3, help="Number of moments to look at" )
+    parser = argparse.ArgumentParser( description='Does the polynomial optimization procedure work when we are given the values of $\pi$ (hence breaking symmetry)?' )
     parser.set_defaults(func=do_generate)
 
     ARGS = parser.parse_args()
     ARGS.func(ARGS)
+

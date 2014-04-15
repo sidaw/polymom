@@ -36,6 +36,16 @@ def construct_basis(pol):
 
     return list(basis)
 
+def construct_basis_(pol):
+    """
+    Construct a basis for the polynomial
+    """
+    monoms = pol.monoms()
+    max_degree = np.array(monoms).max(0)
+    basis = it.product(*(xrange(deg+1) for deg in max_degree))
+
+    return list(basis)
+
 def find_coeffs(pol):
     """Construct matrix of coefficients"""
     coeffs = pol.coeffs()
@@ -76,26 +86,33 @@ def optimize_polynomial(pol):
 
     max_degree = np.array(monoms).max(0)
     basis = construct_basis(pol)
+    basis_ = construct_basis_(pol)
 
     def idx(b):
         ret, multiplier = 0, 1
         for sym in xrange(len(max_degree)):
-            ret += multiplier * b[sym]
-            multiplier *= max_degree[sym]
+            ret += multiplier * b[-sym]
+            multiplier *= (max_degree[-sym]+1) # to account for 0
         return ret
 
+    def idx_(b):
+        ret, multiplier = 0, 1
+        for sym in xrange(len(max_degree)):
+            ret += multiplier * b[-sym]
+            multiplier *= (int(np.ceil(max_degree[-sym]/2))+1) # to account for 0
+        return ret
 
     # x^2 => x^1 x^1
     # x^4 => x^2 * x^2
     D = len(basis)
-    B = 2 * D - 1 # y_0, y_1, y_2
+    B = len(basis_) #2 * D - 1 # y_0, y_1, y_2
 
     # Construct the matrix M_{ij} = y_{i+j} ≥ 0
     # Decomposes as \sum_{ij} \delta_{ij} y_{i+j}
     G = np.zeros( (B, D**2) ) # A p**2 matrix with p values
     for b1 in basis:
         for b2 in basis:
-            G[idx(tuple_add(b1, b2)) , D * idx(b1)  + idx(b2)] += 1
+            G[idx(tuple_add(b1, b2)) , D * idx_(b1)  + idx_(b2)] += 1
     G = -G
     h = np.zeros((D, D))
 
