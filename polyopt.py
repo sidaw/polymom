@@ -1,4 +1,3 @@
-#!/usr/bin/env python2.7
 # coding: utf-8
 """
 Polynomial optimization routines
@@ -97,12 +96,13 @@ def optimize_polynomial(pol):
     for b1 in basis:
         for b2 in basis:
             G[idx(tuple_add(b1, b2)) , D * idx(b1)  + idx(b2)] += 1
+    G = -G
     h = np.zeros((D, D))
 
     # Finally, we need to set y_1 = 1
-    A = np.zeros((B, B))
+    A = np.zeros((1, B))
     A[0,0] = 1
-    b = np.zeros(B)
+    b = np.zeros(1)
     b[0] = 1
 
     # Pad zeros
@@ -119,7 +119,7 @@ def optimize_polynomial(pol):
             matrix(coeffs), 
             Gs = [matrix(G.T)],
             hs = [matrix(h)],
-#            A  = matrix(A),
-#            b  = matrix(b),
+            A  = matrix(A),
+            b  = matrix(b),
             )
 
