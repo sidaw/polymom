@@ -8,6 +8,8 @@ from sympy import symbols, poly
 import numpy as np
 from util import tuple_add
 
+import polyopt
+
 def generate_moments(hyper, params):
     """
     Measure the moments by substituting the parameters
@@ -78,27 +80,10 @@ def generate_parameters(hyper):
 def create_mom_poly(p,m):
     """Create the sos polynomial"""
     # polynomial.
-    basis = set([])
     pol = 1.
     for key in p.keys():
-        basis.update(p[key].monoms())
         pol += (p[key] - m[key])**2
-
-    # get basis.
-    basis = sorted(basis)
-    return basis, pol
-
-def generate_cvx(A):
-    """Generate the CVX program from the matrix of coefficients A"""
-    template = """
-# Auto-generated script 
-# TODO: populate program
-cvx_begin
-
-cvx_end
-
-"""
-    print template
+    return pol
 
 def do_generate(args):
     hyper = { 'k': args.k, 'd' : args.d, 'v' : args.v }
@@ -108,16 +93,13 @@ def do_generate(args):
         raise NotImplementedError() 
 
     params = generate_parameters(hyper)
-    p = generate_poly(hyper, params)
-    m = generate_moments(hyper, params)
-    basis, pol = create_mom_poly(p,m)
-    A = find_coeffs(basis, pol)
+    params_pol = generate_poly(hyper, params)
+    mom = generate_moments(hyper, params)
+    pol = create_mom_poly(params_pol,mom)
+    sol = polyopt.optimize_polynomial(pol)
 
-    print A
-
-    generate_cvx(A)
-
-    return basis, pol, A
+    print sol
+    return sol
 
 if __name__ == "__main__":
     import argparse
