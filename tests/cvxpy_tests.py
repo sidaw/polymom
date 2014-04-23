@@ -103,7 +103,7 @@ def test_cvx_polynomial():
     subj to yy' >= 0
     """
 
-    a = 1.0
+    a = 4.0
 
     A = cp.Variable(2,2)
 

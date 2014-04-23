@@ -8,59 +8,32 @@ import itertools as it
 from util import tuple_add
 
 from cvxopt import matrix, solvers
+from sympy import symbols, poly
 
-def basis_transformation(max_degree, basis = "power"):
+def by_evaluation(*pols, **args):
+    r"""
+    Creates a polynomial by evaluating each of pols with the arguments in **kwargs
+
+    @param *pols polynomial list - list of polynomials to evaluate
+    @param **kwargs symbol map - map of variable to value
+    @return polynomial - is \sum (pol_i - pol_i(x))^2
     """
-    Returns a linear transformation (i.e. a matrix) from the power
-    series basis (1, x, x^2, ...) to the specified basis.
+    ret = 0.
+    for pol in pols:
+        ret += (pol - pol.evalf(subs=args))**2
+    return poly(ret)
 
-    @param max_degree double - maximum degree of the power basis to be considered
-    @param basis ('symmetric' | 'symmetric_irreducible') - basis to transform to 
-    @returns matrix - the linear transform
+def get_max_degree(pol):
     """
-
-    if basis == "power":
-        return np.eye(max_degree)
-    else:
-        raise NotImplementedError("no support for basis " + basis)
-
-def construct_basis(pol):
+    Returns the largest degree of all monomials in the polynomial
     """
-    Construct a basis for the polynomial
+    return reduce( lambda deg, term: map(max, zip(deg, term)), pol.monoms())
+
+def get_monom(pol, degrees):
     """
-    monoms = pol.monoms()
-    max_degree = np.array(monoms).max(0)
-    max_degree = [ int(np.ceil(deg/2.0)) for deg in max_degree ]
-
-    basis = it.product(*(xrange(deg+1) for deg in max_degree))
-
-    return list(basis)
-
-def construct_basis_(pol):
+    Get a monomial term from the polynomial with the specified degree sequence.
     """
-    Construct a basis for the polynomial
-    """
-    monoms = pol.monoms()
-    max_degree = np.array(monoms).max(0)
-    basis = it.product(*(xrange(deg+1) for deg in max_degree))
-
-    return list(basis)
-
-def find_coeffs(pol):
-    """Construct matrix of coefficients"""
-    coeffs = pol.coeffs()
-    monoms = pol.monoms()
-
-    basis = construct_basis(pol)
-
-    # Fill in the coefficients
-    p = len(basis)
-    A = np.zeros((p,p))
-    for i in xrange(p):
-        for j in xrange(p):
-            basis_ = tuple_add(basis[i], basis[j])
-            A[i,j] = coeffs[monoms.index(basis_)]
-    return basis, A
+    return reduce(lambda acc, (sym, deg) : acc * sym**deg, zip(list(pol.free_symbols), degrees), 1)
 
 def optimize_polynomial(pol):
     r"""
@@ -79,64 +52,42 @@ def optimize_polynomial(pol):
                         y* = E_\mu[b(x)].
     """
 
-    coeffs = map(float, pol.coeffs())
-    monoms = pol.monoms()
     # basis in sorted order from 1 to largest
-    coeffs.reverse()
+    # Get the largest monomial term
+    max_degree = get_max_degree(pol)
+    half_degree = map( lambda deg: int(np.ceil(deg/2.)), max_degree)
 
-    max_degree = np.array(monoms).max(0)
-    basis = construct_basis(pol)
-    basis_ = construct_basis_(pol)
+    # Generate basis
+    basis = list(it.product( *[range(deg + 1) for deg in max_degree] ) )
+    half_basis = list(it.product( *[range(deg + 1) for deg in half_degree] ) )
+    N, M = len(basis), len(half_basis)
 
-    def idx(b):
-        ret, multiplier = 0, 1
-        for sym in xrange(len(max_degree)):
-            ret += multiplier * b[-sym]
-            multiplier *= (max_degree[-sym]+1) # to account for 0
-        return ret
+    # The coefficient term
+    c = np.matrix([float(pol.nth(*elem)) for elem in basis]).T
+    # The inequality term, enforcing sos-ness
+    G = np.zeros( ( M**2, N ) )
+    for i, j in it.product(xrange(M), xrange(M)):
+        e1, e2 = half_basis[i], half_basis[j]
+        monom = tuple_add(e1,e2)
+        k = basis.index(monom)
+        if k != -1:
+            G[ M * i + j, k ] = 1
+    h = np.zeros((M, M))
 
-    def idx_(b):
-        ret, multiplier = 0, 1
-        for sym in xrange(len(max_degree)):
-            ret += multiplier * b[-sym]
-            multiplier *= (int(np.ceil(max_degree[-sym]/2))+1) # to account for 0
-        return ret
-
-    # x^2 => x^1 x^1
-    # x^4 => x^2 * x^2
-    D = len(basis)
-    B = len(basis_) #2 * D - 1 # y_0, y_1, y_2
-
-    # Construct the matrix M_{ij} = y_{i+j} ≥ 0
-    # Decomposes as \sum_{ij} \delta_{ij} y_{i+j}
-    G = np.zeros( (B, D**2) ) # A p**2 matrix with p values
-    for b1 in basis:
-        for b2 in basis:
-            G[idx(tuple_add(b1, b2)) , D * idx_(b1)  + idx_(b2)] += 1
-    G = -G
-    h = np.zeros((D, D))
-
-    # Finally, we need to set y_1 = 1
-    A = np.zeros((1, B))
+    # Finally, y_1 = 1
+    A = np.zeros((1, N))
     A[0,0] = 1
     b = np.zeros(1)
     b[0] = 1
 
-    # Pad zeros
-    while len(coeffs) < B:
-        coeffs.append(0.)
-
-    print coeffs
-    print G
-    print h
-    print A
-    print b
-
-    return solvers.sdp(
-            matrix(coeffs), 
-            Gs = [matrix(G.T)],
+    sol = solvers.sdp(
+            c = matrix(c),
+            Gs = [matrix(-G)],
             hs = [matrix(h)],
             A  = matrix(A),
             b  = matrix(b),
             )
+    assert sol['status'] == 'optimal'
+
+    return dict([ (get_monom(pol,coeff), val) for coeff, val in zip(basis, list(sol['x'])) ] )
 
