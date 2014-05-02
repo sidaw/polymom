@@ -8,7 +8,10 @@ import itertools as it
 from util import tuple_add
 
 from cvxopt import matrix, solvers
-from sympy import symbols, poly
+import sympy as sp
+import operator as op
+
+solvers.options['show_progress'] = True
 
 def by_evaluation(*pols, **args):
     r"""
@@ -21,7 +24,7 @@ def by_evaluation(*pols, **args):
     ret = 0.
     for pol in pols:
         ret += (pol - pol.evalf(subs=args))**2
-    return poly(ret)
+    return sp.poly(ret)
 
 def get_max_degree(pol):
     """
@@ -90,4 +93,71 @@ def optimize_polynomial(pol):
     assert sol['status'] == 'optimal'
 
     return dict([ (get_monom(pol,coeff), val) for coeff, val in zip(basis, list(sol['x'])) ] )
+
+order_monomial = sp.polys.orderings.monomial_key
+
+def order_monomials(monoms, ordering='grlex'):
+    return map(op.itemgetter(1), sorted(map(order_monomial(ordering), monoms)))
+
+def monom_to_sym(monom, *syms):
+    assert len(syms) == len(monom)
+    term = 1.
+    for sym, exp in zip(syms, monom):
+        term *= sym ** exp
+    return term
+
+def get_leading_term(pol, *syms, **kwargs):
+    """
+    Get the leading term of the polynomial pol
+    """
+    ordering = kwargs.get('ordering', 'grlex')
+    _, lt = max( map( order_monomial(ordering), pol.monoms() ) )
+    if len(syms) == 0:
+        return lt
+    else:
+        return monom_to_sym(lt, *syms)
+
+def get_quotient_basis(g_basis, *syms):
+    # - Get the leading terms
+    lts = [ get_leading_term(b) for b in g_basis ]
+    basis = set([])
+    for lt in lts:
+        terms = map(tuple,
+                it.product(*[range(0,max(1,i)) for i in lt]))
+        basis.update( terms )
+    basis = order_monomials(basis)
+
+    if len(syms) == 0:
+        return lt
+    else:
+        return [monom_to_sym(b, *syms) for b in basis]
+
+def construct_companion_matrix(g_basis, q_basis, sym):
+    return None
+
+def solve_companion_matrix(I, *syms):
+    """
+    Solve the polynomial equations pol via the companion matrix method.
+    """
+    x,y = sp.symbols('x,y')
+    f1 = sp.poly( x**2 + y - 1, domain = 'C' )
+    f2 = sp.poly( 2*x**2 + x*y + 2*y**2 + 1, domain = 'C' )
+    I = [f1,f2]
+    syms = [x,y]
+
+    # 1) Find the grobner basis for I
+    g_basis = sp.polys.groebner(I, x, y, order='grlex')
+    # 2) Find the linear basis of C[X]/I
+    q_basis = get_quotient_basis(I, x, y)
+    # 3) Construct companion matrices
+    T = {}
+    for sym in syms:
+        T[sym] = construct_companion_matrix(g_basis, q_basis, sym)
+    # 4) Solve
+
+    pass
+
+
+
+
 
