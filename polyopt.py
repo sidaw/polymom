@@ -11,6 +11,9 @@ from cvxopt import matrix, solvers
 import sympy as sp
 import operator as op
 
+from numpy.linalg import eig, inv
+from numpy import diag
+
 solvers.options['show_progress'] = True
 
 def by_evaluation(*pols, **args):
@@ -132,32 +135,52 @@ def get_quotient_basis(g_basis, *syms):
     else:
         return [monom_to_sym(b, *syms) for b in basis]
 
-def construct_companion_matrix(g_basis, q_basis, sym):
-    return None
-
-def solve_companion_matrix(I, *syms):
+def linear_representation(p, basis):
     """
-    Solve the polynomial equations pol via the companion matrix method.
+    Represent the polynomial p as a linear combination of the basis elements.
+    """
+    return np.array([p.coeff_monomial(b) for b in basis], dtype="float")
+
+def construct_companion_matrix(g_basis, q_basis, sym):
+    """
+    Multiply q_basis by the sym and reduce using g_basis. The remainder is
+    guaranteed to be in q_basis, and can be represented as such.
+    """
+    m = []
+    for b in q_basis:
+        _, r = g_basis.reduce(b * sym)
+        m.append(linear_representation(r, q_basis))
+    return np.array(m, dtype="float")
+
+def test_simple_basis():
+    """
+    Test the creation of a quotient basis
     """
     x,y = sp.symbols('x,y')
     f1 = sp.poly( x**2 + y - 1, domain = 'C' )
     f2 = sp.poly( 2*x**2 + x*y + 2*y**2 + 1, domain = 'C' )
     I = [f1,f2]
     syms = [x,y]
+    g_basis = sp.polys.groebner(I, *syms, order='grlex')
+    q_basis = get_quotient_basis(I, *syms)
+    assert len(q_basis) == 4
 
+def solve_companion_matrix(I, *syms):
+    """
+    Solve the polynomial equations pol via the companion matrix method.
+    """
     # 1) Find the grobner basis for I
-    g_basis = sp.polys.groebner(I, x, y, order='grlex')
+    g_basis = sp.polys.groebner(I, *syms, order='grlex')
+    print "Groebner basis:", g_basis
     # 2) Find the linear basis of C[X]/I
-    q_basis = get_quotient_basis(I, x, y)
+    q_basis = get_quotient_basis(g_basis, *syms)
+    print "Quotient basis:", q_basis
     # 3) Construct companion matrices
     T = {}
     for sym in syms:
         T[sym] = construct_companion_matrix(g_basis, q_basis, sym)
     # 4) Solve
+    l, R = eig(T[syms[0]])
+    L = { key : diag(inv(R).dot(t).dot(R)) for key, t in T.items()}
 
-    pass
-
-
-
-
-
+    return L
