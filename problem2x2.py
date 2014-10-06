@@ -10,16 +10,16 @@ from polyopt import *
 def get_problem_instance(seed=0):
     x1, x2, y1, y2 = sp.symbols('x1,x2,y1,y2')
     syms = [x1, x2, y1, y2]
-    m11 = sp.poly(x1 + x2, *syms, domain='RR')
-    m12 = sp.poly(y1 + y2, *syms, domain='RR')
-    m211 = sp.poly(x1**2 + x2**2, *syms, domain='RR')
-    m212 = sp.poly(x1 * y1 + x2 * y2, *syms, domain='RR')
-    m222 = sp.poly(y1**2 + y2**2, *syms, domain='RR')
-    m3111 = sp.poly(x1**3 + x2**3, *syms, domain='RR')
-    m3112 = sp.poly(x1**2 * y1 + x2**2 * y2, *syms, domain='RR')
-    m3122 = sp.poly(x1 * y1**2 + x2 * y2**2, *syms, domain='RR')
-    m3222 = sp.poly(y1**3 + y2**3, *syms, domain='RR')
-    ms = [ m11, m12, m211, m212, m222, m3111, m3112, m3122, m3222, ]
+    m1x = sp.poly(x1 + x2, *syms, domain='RR')
+    m1y = sp.poly(y1 + y2, *syms, domain='RR')
+    m2xx = sp.poly(x1**2 + x2**2, *syms, domain='RR')
+    m2xy = sp.poly(x1 * y1 + x2 * y2, *syms, domain='RR')
+    m2yy = sp.poly(y1**2 + y2**2, *syms, domain='RR')
+    m3xxx = sp.poly(x1**3 + x2**3, *syms, domain='RR')
+    m3xxy = sp.poly(x1**2 * y1 + x2**2 * y2, *syms, domain='RR')
+    m3xyy = sp.poly(x1 * y1**2 + x2 * y2**2, *syms, domain='RR')
+    m3yyy = sp.poly(y1**3 + y2**3, *syms, domain='RR')
+    ms = [ m1x, m1y, m2xx, m2xy, m2yy, m3xxx, m3xxy, m3xyy, m3yyy, ]
 
     if seed == 0:
         x1v, x2v = 1, -1
