@@ -33,12 +33,13 @@ def generate_poly(hyper, params):
     """
 
     k, d = hyper['k'], hyper['d']
-    atoms = { 
-                (h,) : symbols('h_%d'%h)
-                for h in xrange(1, k+1)
-            }
+    #atoms = { 
+    #            (h,) : symbols('h_%d'%h)
+    #            for h in xrange(1, k+1)
+    #        }
     #atoms[(k,)] = 1. - sum( symbols('h_%d'%h) for h in xrange(1, k) )
 
+    atoms = {}
     for h in xrange(1,k+1):
         atoms.update({ 
                 (h,x1) : symbols('x_%d%d'%(h,x1))
@@ -48,11 +49,11 @@ def generate_poly(hyper, params):
 
     m = {}
     for x1 in xrange(1,d+1):
-        m[(x1,)] = poly( sum( atoms[(h,x1)] * atoms[(h,)] for h in xrange(1,k+1) ) )
+        m[(x1,)] = poly( sum( atoms[(h,x1)] for h in xrange(1,k+1) ) )
         for x2 in xrange(1,d+1):
-            m[(x1,x2)] = poly( sum( atoms[(h,x1)] * atoms[(h,x2)] * atoms[(h,)] for h in xrange(1,k+1) ) )
+            m[(x1,x2)] = poly( sum( atoms[(h,x1)] * atoms[(h,x2)] for h in xrange(1,k+1) ) )
             for x3 in xrange(1,d+1):
-                m[(x1,x2,x3)] = poly( sum( atoms[(h,x1)] * atoms[(h,x2)] * atoms[(h,x3)] * atoms[(h,)] for h in xrange(1,k+1) ) )
+                m[(x1,x2,x3)] = poly( sum( atoms[(h,x1)] * atoms[(h,x2)] * atoms[(h,x3)] for h in xrange(1,k+1) ) )
 
     return m
 

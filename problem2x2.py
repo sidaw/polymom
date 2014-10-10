@@ -15,24 +15,29 @@ def get_problem_instance(seed=0):
     m2xx = sp.poly(x1**2 + x2**2, *syms, domain='RR')
     m2xy = sp.poly(x1 * y1 + x2 * y2, *syms, domain='RR')
     m2yy = sp.poly(y1**2 + y2**2, *syms, domain='RR')
-    m3xxx = sp.poly(x1**3 + x2**3, *syms, domain='RR')
-    m3xxy = sp.poly(x1**2 * y1 + x2**2 * y2, *syms, domain='RR')
-    m3xyy = sp.poly(x1 * y1**2 + x2 * y2**2, *syms, domain='RR')
-    m3yyy = sp.poly(y1**3 + y2**3, *syms, domain='RR')
-    ms = [ m1x, m1y, m2xx, m2xy, m2yy, m3xxx, m3xxy, m3xyy, m3yyy, ]
+    #m3xxx = sp.poly(x1**3 + x2**3, *syms, domain='RR')
+    #m3xxy = sp.poly(x1**2 * y1 + x2**2 * y2, *syms, domain='RR')
+    #m3xyy = sp.poly(x1 * y1**2 + x2 * y2**2, *syms, domain='RR')
+    #m3yyy = sp.poly(y1**3 + y2**3, *syms, domain='RR')
+    #ms = [ m1x, m1y, m2xx, m2xy, m2yy, m3xxx, m3xxy, m3xyy, m3yyy, ]
+    ms = [ m1x, m1y, m2xx, m2xy ] #, m2yy, ]
 
     if seed == 0:
         x1v, x2v = 1, -1
         y1v, y2v = -1, 1
     else:
-        x1v, x2v = np.random.randint(-10,10), np.random.randint(-10,10)
-        y1v, y2v = np.random.randint(-10,10), np.random.randint(-10,10)
+        #x1v, x2v = np.random.randint(-100,100), np.random.randint(-100,100)
+        #y1v, y2v = np.random.randint(-100,100), np.random.randint(-100,100)
+        x1v, y1v = np.random.randn(), np.random.randn()
+        x2v, y2v = np.random.randn(), np.random.randn()
     print "x1: ", x1v
     print "x2: ", x2v
     print "y1: ", y1v
     print "y2: ", y2v
 
-    I = [ m - m(x1v, x2v, y1v, y2v) for m in ms]
+    sigma = 0
+    I = [ (m - m(x1v, x2v, y1v, y2v) + sigma * np.random.randn()) for m in ms]
+    print [m(x1v, x2v, y1v, y2v) for m in ms]
     print "Ideal: ", I
 
     return I, syms

@@ -170,8 +170,12 @@ def solve_companion_matrix(I, *syms):
     Solve the polynomial equations pol via the companion matrix method.
     """
     # 1) Find the grobner basis for I
-    g_basis = sp.polys.groebner(I, *syms, order='grlex')
+    g_basis = sp.polys.groebner(I, *syms, order='grevlex', method='buchberger')
     print "Groebner basis:", g_basis
+    if len(g_basis) == 1 and g_basis[0] == 1.:
+        raise RuntimeError("No solution possible!")
+
+
     # 2) Find the linear basis of C[X]/I
     q_basis = get_quotient_basis(g_basis, *syms)
     print "Quotient basis:", q_basis
@@ -179,8 +183,10 @@ def solve_companion_matrix(I, *syms):
     T = {}
     for sym in syms:
         T[sym] = construct_companion_matrix(g_basis, q_basis, sym)
+        print sym, T[sym]
     # 4) Solve
     l, R = eig(T[syms[0]])
+    print R
     L = { key : diag(inv(R).dot(t).dot(R)) for key, t in T.items()}
 
     return L
