@@ -11,8 +11,8 @@ from polyopt import *
 
 def random_dist(n):
     """Random probability distribution"""
-    dist = [np.random.random() for _ in xrange(n)]
-    z = sum(dist)
+    dist = [np.random.randint(1,10) for _ in xrange(n)]
+    z = 1. #sum(dist)
     return [pr/z for pr in dist]
 
 def sym(h, x):
@@ -83,7 +83,7 @@ def get_problem_instance(k=2, d=2, seed=0):
 
     # Evaluate moments
     I = [p - p.eval(params) for p in I_.values()]
-    I = I[:-5]
+    I = I[:-3]
     print I
 
     return I, syms, params
