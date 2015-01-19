@@ -14,13 +14,32 @@ from sympy import symbols, poly, ring, QQ, lex, Symbol, groebner
 from util import nonzeros, first, prod
 
 # Running examples
-def get_example_simple():
+def example_simple():
     """
     Example 3.1 from paper. 4 variables, 4 equations, simple, method
     works
     """
     R, x0, x1, x2, x3 = ring('x0,x1,x2,x3', QQ, lex)
     I = [x0**4 - 1, x0**2 + x2, x1**2 + x2, x2**2 + x3]
+    return R, I
+
+def example_fail():
+    """
+    Example 3.2 from paper. 2 variables, 3 equations, method fails
+    Failure mode: one of the ideal quotients is empty, which means that
+    the variety could be the empty set.
+    """
+    R, x0, x1, x2 = ring('x0,x1,x2', QQ, lex)
+    I = [x0 * x1 + 1, x1 + x2, x1*x2]
+    return R, I
+
+def example_order_preservation():
+    """
+    Example 3.4 from paper. 5 variables, 7 equations. Method fails
+    unless the lex basis is re-added to the original basis
+    """
+    R, x0, x1, x2, x3, x4 = ring('x0,x1,x2,x3,x4', QQ, lex)
+    I = [x0 - x2, x0 - x3, x1 - x3, x1 - x4, x2 - x3, x3 - x4, x2**2]
     return R, I
 
 #####
@@ -58,7 +77,7 @@ def get_clique(I, sym):
 
 def test_get_clique():
     """Test cliques for simple example I"""
-    R, I = get_example_simple()
+    R, I = example_simple()
     x0, x1, x2, x3 = R.symbols
     assert list(get_clique(I, x0)) == [0, 2]
     assert list(get_clique(I, x1)) == [1, 2]
@@ -84,7 +103,7 @@ def test_split_gens():
     """
     Test the split gens function
     """
-    _, I = get_example_simple()
+    _, I = example_simple()
     X0 = get_clique(I, 0)
     J, K = split_gens(I, X0)
     assert I[0] in J
@@ -154,18 +173,24 @@ def eliminate(R, I, L=-1):
     for l in xrange(L):
         # get clique X_l of "G"
         X_l = get_clique(I, l)
+        print "X_l", X_l
         # split the I_l in to two sets of generators J_l, K_l
         J, K = split_gens(I, X_l)
         # Get lex grobner basis for J_l and append to J_l
-        J += as_ring_exprs(R, groebner(as_polys(J), to_syms(R, X_l), order=R.order))
+        J = as_ring_exprs(R, groebner(as_polys(J), to_syms(R, X_l), domain=R.domain, order=R.order)) + J
         # Eliminate x_l from J_l
-        J = as_ring_exprs(R, groebner(as_polys(J), to_syms(R, X_l), order=R.order, wrt='x%d'%l))[1:]
+        print "J", J
+        J, _ = split_gens(set(J), X_l.difference([l]))
+        # TODO: eliminate x_l
+        #J = as_ring_exprs(R, groebner(as_polys(J), to_syms(R, X_l), domain=R.domain, order=R.order, wrt='x%d'%l))[1:]
+        print "J", J
         # Construct W_l from the coeff ring.
-        W_ = [get_coefficient_term(R, f) for f in J]
+        W_ = [get_coefficient_term(R, f) for f in J] + K
+        if 1 in W_: W_ = 1
         # Re construct the next I
         I = J + K
         W.append(W_)
-        print I, W_
+        print "I_l, W_l", I, W_
     return I, W
 
 def do_test(args):
