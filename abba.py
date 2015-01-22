@@ -27,31 +27,23 @@ def reduced_row_echelon(A, tau):
     This routine computes a reduced row echelon form with tolerance tau.
     """
 
-    m, n = A.shape
+    R = sp.matrix2numpy(sp.Matrix(A).rref(iszerofunc = lambda v : v < tau)[0], dtype=np.double)
+    # Row normalize
+    for i in xrange(R.shape[0]):
+        R[i,:] /= norm(R[i,:])
 
-    Q = zeros((m, 0))
-    R = zeros((m, 0))
+    return R    
 
-    for i in xrange(n):
-        ai = A[:,i]
-        qi = vert(ai) - vert(sum(ai.dot(qj) * qj for qj in Q.T))
-        li = norm(qi)
+def test_reduced_row_echelon():
+    B = array([[0.0004, 0.6755, -0.5089, -0.5068, -0.1667],
+               [0, -0.3812, -0.3735, -0.3812, 0.7548]])
+    C = array([[0, 0.3812, 0.3735, 0.3812, -0.7548],
+               [0, 0, 0.5754, 0.5811, -0.5754]])
+    tau = 0.0001
+    C_ = reduced_row_echelon(B, tau)
+    print C
+    print C_
+    assert max(abs(C - C_).flatten()) < tau
 
-        ri = zeros(m)
-        print "li", i, li
-        if li > tau:
-            Q = hstack((Q, 1.0/li * qi))
-            for j in xrange(Q.shape[1]-1):
-                ri[j, 0] = li * ai.dot(col(Q,j)) 
-            ri[Q.shape[1]-1, 0] = li
-        R = hstack((R, vert(ri)))
 
-    # Clear out columns
-    for i in xrange(m-1,-1,-1):
-        pivot = first(nonzero(R[i,:]))
-        for j in xrange(i):
-            # Get pivot
-            R[j,:] = R[i,:] * R[j,pivot] / R[i,pivot]
-
-    return Q, R    
-
+    B = [[0.0004, 0.6755, -0.5089, -0.5068, -0.1667], [0, -0.3812, -0.3735, -0.3812, 0.7548]]
