@@ -457,24 +457,3 @@ def solve(R, I, order = None):
         print "X_l", X_l, Hs[l]
         print "X_l:", X_l, sp.solve(as_polys(Hs[l]), *to_syms(R, X_l))
 
-
-
-
-def do_test(args):
-    """
-    Interactive test harness
-    """
-    pass
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser( description='' )
-    parser.add_argument( '', type=str, help="" )
-    parser.set_defaults(func=do_test)
-
-    #subparsers = parser.add_subparsers()
-    #command_parser = subparsers.add_parser('command', help='' )
-    #command_parser.set_defaults(func=do_command)
-
-    ARGS = parser.parse_args()
-    ARGS.func(ARGS)
