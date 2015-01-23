@@ -24,3 +24,11 @@ def first(iterable, default=None, key=None):
 def prod(iterable):
     return reduce(operator.mul, iterable, 1)
 
+def to_syms(R, *monoms):
+    """
+    Get the symbols of an ideal I
+    """
+    return [prod(R.symbols[i]**j 
+                for (i, j) in enumerate(monom)) 
+                    for monom in monoms]
+
