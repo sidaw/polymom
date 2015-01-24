@@ -137,6 +137,34 @@ def example_simple():
 
     return R, I, G
 
+def example_20():
+    """
+    Example 20 from KK
+    """
+    R, x, y, z = ring('x,y,z', RR, grevlex)
+    I = [z**2 + 3 * y - 7 * z,
+         y * z - 4 * y,
+         x * z - 4 * y,
+         y**2 - 4*y,
+         x*y - 4 * y,
+         x**5 - 8 * x**4 + 14 * x**4 + 8 * x**2 - 15 * x + 15 * y,
+        ]
+    G = [z**2 + 3 * y - 7 *z,
+            y * z - 4 * y,
+            x * z - 4 * y,
+            y**2 - 4*y,
+            x *y - 4 * y,
+            x**2 * z - 16 * y,
+            x **2 * y - 16 * y,
+            x**3 * z - 64 * y,
+            x**3 * y - 64 * y,
+            x**4 * z - 256 * y,
+            x**4 * y - 256 * y,
+            x **5 - 8 * x **4 + 14 * x **4 + 8 * x **2 - 15 * x + 15 * y,
+            ]
+
+    return R, I, G
+
 def example():
     """
     Example 4.12
@@ -451,6 +479,7 @@ def compute(R, I, delta):
         else:
             break
     # Apply final reduction algorithm.
+    ipdb.set_trace()
     return final_reduction(R, L, B, V)
 
 def test_compute():
@@ -458,4 +487,5 @@ def test_compute():
     B, G_ = compute(R, I, 0.001)
     G = matrix_representation(B, G)
     assert np.allclose(G, G_)
+
 
