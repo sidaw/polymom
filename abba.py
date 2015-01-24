@@ -73,7 +73,7 @@ def lti(B, V):
     """
     return [B[lt(f)[0]] for f in V]
 
-def rref(A, tau):
+def rref(A, tau = 1e-4):
     """
     a1, ..., an are columns of $A$. 
     This routine computes a reduced row echelon form with tolerance tau.
@@ -263,16 +263,16 @@ def unitary_basis(L, I):
     """
     return row_normalize(matrix_representation(L, I))
 
-def approx_unitary_basis(L, I, tau):
+def approx_unitary_basis(L, I, tau = 1e-4):
     """
     Construct a matrix with terms in L
     """
     # Using QR instead of RREF because...
-    #return rref(matrix_representation(L,I), tau)
+    return rref(matrix_representation(L,I), tau)
 
-    _, V = qr(matrix_representation(L, I))
-    V[abs(V) < 1e-10] = 0
-    return row_normalize(V)
+    #_, V = qr(matrix_representation(L, I))
+    #V[abs(V) < 1e-10] = 0
+    #return row_normalize(V)
 
 def test_approx_unitary_basis():
     R, I, _ = example_simple()
@@ -355,7 +355,7 @@ def test_restrict_lt2():
     assert len(B_) == 2
     assert np.allclose(W_, W[:2,1:])
 
-def approx_basis_extension(R, B, V, tau = 0.001):
+def approx_basis_extension(R, B, V, tau = 1e-4):
     """
     Extend the vector space $V$ with elements from $R$
     """
@@ -378,9 +378,9 @@ def approx_basis_extension(R, B, V, tau = 0.001):
     
     # Compute the e-truncated SVD and thus the ONB row space.
     _, _, V_B = truncated_svd(V_B, tau)
-    #V_B = rref(V_B, tau) # TODO: Set tau appropriately.
-    _, V_B = qr(V_B)
-    V_B[abs(V_B) < 1e-10] = 0
+    V_B = rref(V_B, tau) # TODO: Set tau appropriately.
+    #_, V_B = qr(V_B)
+    #V_B[abs(V_B) < 1e-10] = 0
     
     return B_, V_A, V_B
 
@@ -479,7 +479,6 @@ def compute(R, I, delta):
         else:
             break
     # Apply final reduction algorithm.
-    ipdb.set_trace()
     return final_reduction(R, L, B, V)
 
 def test_compute():
@@ -488,4 +487,9 @@ def test_compute():
     G = matrix_representation(B, G)
     assert np.allclose(G, G_)
 
+def test_compute_20():
+    R, I, G = example_20()
+    B, G_ = compute(R, I, 0.001)
+    G = matrix_representation(B, G)
+    assert np.allclose(G, G_)
 
