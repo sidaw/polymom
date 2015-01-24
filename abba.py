@@ -10,9 +10,9 @@ Computation, 44(11), 1566–1591. doi:10.1016/j.jsc.2008.11.010
 import numpy as np
 import sympy as sp
 from numpy import array, zeros, atleast_2d, hstack, diag
-from numpy.linalg import norm, svd
+from numpy.linalg import norm, svd, qr
 
-from sympy import ring, RR, lex, grevlex
+from sympy import ring, RR, lex, grevlex, pprint
 from util import to_syms
 from itertools import chain
 
@@ -33,13 +33,23 @@ def sel(lst, idxs):
 def difference(l1, l2):
     return set(l1).difference(l2)
 
+def print_space(R, B, V):
+    for v in V.dot(to_syms(R,*B)):
+        pprint(v)
+
 def row_normalize(R):
     """
     Normalize rows to have unit norm
     """
+    return array([r / norm(r) for r in R if norm(r) > 1e-10])
+
+def lt_normalize(R):
+    """
+    Normalize to have the max term be 1
+    """
     rows, _ = R.shape
     for r in xrange(rows):
-        R[r,:] /= norm(R[r,:])
+        R[r,:] /= max(abs(R[r,:]))
     return R
 
 def lt(arr, tau = 0):
@@ -47,6 +57,21 @@ def lt(arr, tau = 0):
     Get the leading term of arr > tau
     """
     return next((idx, elem) for (idx, elem) in enumerate(arr) if abs(elem) > tau)
+
+def lm(arr):
+    return lt(arr)[0]
+
+def lc(arr):
+    return lt(arr)[1]
+
+def coeff(B, v, term):
+    return v[B.index(term)]
+
+def lti(B, V):
+    """
+    Leading term ideal
+    """
+    return [B[lt(f)[0]] for f in V]
 
 def rref(A, tau):
     """
@@ -85,7 +110,7 @@ def example_trivial():
     My own example.
     """
 
-    R, x, y = ring('x,y', RR, lex)
+    R, x, y = ring('x,y', RR, grevlex)
 
     I = [x**2 - y**2 - 1,
             x + y 
@@ -97,7 +122,7 @@ def example_simple():
     """
     Example 19 from KK
     """
-    R, x, y = ring('x,y', RR, lex)
+    R, x, y = ring('x,y', RR, grevlex)
     I = [x**3 - x,
          y**3 - y,
          x**2*y - 0.5 * y - 0.5 * y**2,
@@ -116,7 +141,7 @@ def example():
     """
     Example 4.12
     """
-    R, x, y, z = ring('x,y,z', RR, lex)
+    R, x, y, z = ring('x,y,z', RR, grevlex)
     I = [0.130 * z**2  + 0.39 * y - 0.911 * z,
          0.242 * y * z - 0.97 * y,
          0.243 * x * z - 0.97 * y,
@@ -170,7 +195,7 @@ def get_support_basis(fs, order=grevlex):
     return sorted(O, key=grevlex, reverse=True)
 
 def test_get_support_basis():
-    _, x, y = ring('x,y', RR, lex)
+    _, x, y = ring('x,y', RR, grevlex)
     f = x**2 + x*y + y
     g = x**2 + x*y + x
     b = get_support_basis([f,g])
@@ -188,7 +213,7 @@ def get_order_basis(fs, order=grevlex):
     return sorted(O, key=grevlex, reverse=True)
 
 def test_get_order_basis():
-    _, x, y = ring('x,y', RR, lex)
+    _, x, y = ring('x,y', RR, grevlex)
     f = x**2 + x*y + y
     g = x**2 + x*y + x
     b = get_order_basis([f,g])
@@ -214,7 +239,30 @@ def approx_unitary_basis(L, I, tau):
     """
     Construct a matrix with terms in L
     """
-    return rref(matrix_representation(L,I), tau)
+    # Using QR instead of RREF because...
+    #return rref(matrix_representation(L,I), tau)
+
+    _, V = qr(matrix_representation(L, I))
+    V[abs(V) < 1e-10] = 0
+    return row_normalize(V)
+
+def test_approx_unitary_basis():
+    R, I, _ = example_simple()
+    x, y = R.symbols
+    I_ = [x**3 - x,
+          y**3 - y,
+          x * y**2 + x **2 - 0.5 * y**2 - x - 0.5 * y,
+          x**2 + x * y - 0.5 * y**2 - x - 0.5 * y,
+          x**2 * y - 0.5 * y**2 - 0.5 * y,
+         ]
+    I_ = sorted([R(i) for i in I_], key=lambda t: grevlex(t.LM), reverse=True)
+
+    L = get_support_basis(I)
+    V = approx_unitary_basis(L, I, 0.001)
+
+    V_ = row_normalize(matrix_representation(L, I_))
+    print V
+    print V_
 
 def truncated_svd(M, epsilon = 0.001):
     """
@@ -255,7 +303,7 @@ def restrict_lt(L, B, W, order = grevlex):
     return sorted(L, key=order, reverse=True), B, W
 
 def test_restrict_lt1():
-    _, x, y = ring('x,y', RR, lex)
+    _, x, y = ring('x,y', RR, grevlex)
     I = [x + y + 1, x**2 + y + 1]
     L = get_order_basis(I)
     B = get_support_basis(I)
@@ -267,7 +315,7 @@ def test_restrict_lt1():
     assert np.allclose(W_, W)
 
 def test_restrict_lt2():
-    _, x, y = ring('x,y', RR, lex)
+    _, x, y = ring('x,y', RR, grevlex)
     I = [x*y**2, x**2 * y + x * y**2, x**3 * y**2]
     L = get_order_basis([x**2*y])
     B = get_support_basis(I)
@@ -302,12 +350,22 @@ def approx_basis_extension(R, B, V, tau = 0.001):
     
     # Compute the e-truncated SVD and thus the ONB row space.
     _, _, V_B = truncated_svd(V_B, tau)
-    V_B = rref(V_B, tau) # TODO: Set tau appropriately.
+    #V_B = rref(V_B, tau) # TODO: Set tau appropriately.
+    _, V_B = qr(V_B)
+    V_B[abs(V_B) < 1e-10] = 0
     
     return B_, V_A, V_B
 
 def test_approx_basis_extension():
-    pass
+    R, I, _ = example_simple()
+    B = get_support_basis(I)
+    V = approx_unitary_basis(B, I, 0.001)
+
+    B, V, W = approx_basis_extension(R, B, V)
+
+    print_space(R, B, lt_normalize(V))
+    print "--"
+    print_space(R, B, lt_normalize(W))
 
 def border(R, O, order=grevlex):
     """
@@ -322,7 +380,7 @@ def border(R, O, order=grevlex):
     return sorted(dO, key=grevlex, reverse=True)
 
 def test_border():
-    R, x, y = ring('x,y', RR, lex)
+    R, x, y = ring('x,y', RR, grevlex)
     O = get_order_basis([x, y])
     dO = border(R, O)
     assert dO == [(2,0), (1,1), (0,2)]
@@ -346,8 +404,27 @@ def extend_basis(R, L, B, V):
 def final_reduction(R, L, B, V):
     """
     Final reduction algorithm
+    Ensures that the terms have exactly one term in dO.
     """
-    return L, B, V
+
+    Lt = lti(B, V)
+    O = L.difference(Lt)
+
+    VR = []
+
+    # The rows are sorted in order of their term ordering
+    for v in reversed(V):
+        H = [t for t in v.nonzero()[0][1:] if B[t] not in O]
+        for t in H:
+            # Find the term in V_R with lt h, and remove it.
+            w = filter(lambda w_ : lm(w_) == t, VR)[0]
+            v -= w * v[t] / w[t]
+        VR.append(v / lc(v))
+
+    # Now return the indicator variables in the border set
+    dO = [B.index(t) for t in border(R, O)]
+    VB = array([v for v in VR if lt(v)[0] in dO])
+    return prune_columns(B, VB)
 
 def compute(R, I, delta):
     """
@@ -362,25 +439,23 @@ def compute(R, I, delta):
     V = approx_unitary_basis(B, I, 0.0001)
 
     while True:
-        ipdb.set_trace()
         L, B, V = extend_basis(R, L, B, V)
         B, V = prune_columns(B, V)
 
         # Update order ideal $O$
         L = set(L)
-        O = L.difference([B[lt(f)[0]] for f in V])
-        if len(L.difference(border(R, O))) > 0:
+        O = L.difference(lti(B, V))
+        if len(difference(border(R,O), L)) > 0:
             # Expand order ideal $L$ with extension until border of $O$ matches.
             L.update(border(R, L))
         else:
-            # Apply final reduction algorithm.
-            return final_reduction(R, L, B, V)
+            break
+    # Apply final reduction algorithm.
+    return final_reduction(R, L, B, V)
 
 def test_compute():
-    R, I = example_trivial()
-    L, B, V = compute(R, I, 0.001)
-    print L
-    print B
-    print V
-
+    R, I, G = example_simple()
+    B, G_ = compute(R, I, 0.001)
+    G = matrix_representation(B, G)
+    assert np.allclose(G, G_)
 
