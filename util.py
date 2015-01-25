@@ -8,6 +8,10 @@ def tuple_add(t1, t2):
     """Elementwise addition of two tuples"""
     return tuple( t1[i] + t2[i] for i in xrange(len(t1)) )
 
+def tuple_diff(t1, t2):
+    """Elementwise addition of two tuples"""
+    return tuple( t1[i] - t2[i] for i in xrange(len(t1)) )
+
 def nonzeros(lst):
     """Return non-zero indices of a list"""
     return (i for i in xrange(len(lst)) if lst[i] > 0)
@@ -28,7 +32,7 @@ def to_syms(R, *monoms):
     """
     Get the symbols of an ideal I
     """
-    return [prod(R.symbols[i]**j 
+    return [prod(R(R.symbols[i])**j 
                 for (i, j) in enumerate(monom)) 
                     for monom in monoms]
 

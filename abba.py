@@ -13,7 +13,7 @@ from numpy import array, zeros, atleast_2d, hstack, diag
 from numpy.linalg import norm, svd, qr
 
 from sympy import ring, RR, lex, grevlex, pprint
-from util import to_syms
+from util import to_syms, tuple_diff
 from itertools import chain
 
 import ipdb
@@ -429,7 +429,7 @@ def extend_basis(R, L, B, V):
     else:
         return L, B, V
 
-def final_reduction(R, L, B, V):
+def final_reduction(R, L, B, V, order = grevlex):
     """
     Final reduction algorithm
     Ensures that the terms have exactly one term in dO.
@@ -452,7 +452,10 @@ def final_reduction(R, L, B, V):
     # Now return the indicator variables in the border set
     dO = [B.index(t) for t in border(R, O)]
     VB = array([v for v in VR if lt(v)[0] in dO])
-    return prune_columns(B, VB)
+    B, VB = prune_columns(B, VB)
+    Gr = [R(f) for f in VB.dot(to_syms(R, *B))]
+    Gr = sorted(Gr, key = lambda f: order(f.LM), reverse = True)
+    return Gr
 
 def compute(R, I, delta):
     """
@@ -492,4 +495,30 @@ def test_compute_20():
     B, G_ = compute(R, I, 0.001)
     G = matrix_representation(B, G)
     assert np.allclose(G, G_)
+
+def border_basis_divide(R, G, f):
+    """
+    Compute the mod remainder within the border basis
+    """
+
+    dO = [g.LM for g in G]
+    # Get the leading term of f
+    # Find the closest term in dO
+    try :
+        _, idx = min((sum(tuple_diff(f.LM, g)), i) 
+                for i, g in enumerate(dO) 
+                if min(tuple_diff(f.LM, g)) >= 0)
+        g = G[idx]
+        t, = to_syms(R, tuple_diff(f.LM, g.LM))
+        f -= g * t * f.LC / g.LC
+        return border_basis_divide(R, G, f)
+    except ValueError:
+        return f
+
+def test_border_basis_divide():
+    R, x, y = ring('x,y', RR, grevlex)
+    G = [x**2 + x + 1, x *y + y, y**2 + x + 1]
+    f = x**3 * y**2 - x * y**2 + x**2 + 2
+    r = border_basis_divide(R, G, f)
+    assert r == -3.0 * x - 1.0
 
