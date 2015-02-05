@@ -73,15 +73,67 @@ def lti(B, V):
     """
     return [B[lt(f)[0]] for f in V]
 
+def srref(A, tau = 1e-4):
+    """
+    Stabilized row reduced echelon form
+    """
+    nrows, ncols = A.shape
+    def a(i):
+        return A[:,i]
+    # Implements QR decomposition.
+    Q, R = [], zeros((nrows, ncols))
+    l0 = norm(a(0))
+    if l0 > tau:
+        R[0, 0] = l0
+        Q.append(a(0)/l0)
+    for i in xrange(1, ncols):
+        ai = a(i)
+        qi = ai - sum(ai.dot(q) * q for q in Q)
+        li = norm(qi)
+        # NOTE: This is really sketch, but gives the right answer.
+        for j, q in enumerate(Q):
+            R[j,i] = ai.dot(q)
+        if len(Q) < nrows:
+            R[len(Q),i] = li
+        if li > tau:
+            Q.append(qi/li)
+
+    R = row_normalize(R)
+    # Now, from last row, clear out first non zero entry of each row -
+    # this is reduced row echelon form.
+    for i in xrange(len(R)-1, 0, -1):
+        ri = R[i,:]
+        pivot = ri.nonzero()[0][0]
+        for j in xrange(i):
+            R[j,:] -= R[i,:] * R[j,pivot] / R[i,pivot]
+    # Clean out things < eps
+    R[abs(R) < 1e-15] = 0
+
+    # Finally, row normalize
+    R = row_normalize(R)
+
+    return array(Q).T, R
+
+def rref_(A, tau = 1e-4):
+    R = sp.matrix2numpy(sp.Matrix(A).rref(iszerofunc = lambda v : abs(v) < tau)[0],
+            dtype=np.double)
+    return row_normalize(R)
+
 def rref(A, tau = 1e-4):
     """
     a1, ..., an are columns of $A$. 
     This routine computes a reduced row echelon form with tolerance tau.
     """
 
-    R = sp.matrix2numpy(sp.Matrix(A).rref(iszerofunc = lambda v : abs(v) < tau)[0],
-            dtype=np.double)
-    return row_normalize(R)
+    #R = sp.matrix2numpy(sp.Matrix(A).rref(iszerofunc = lambda v : abs(v) < tau)[0],
+    #        dtype=np.double)
+    #return row_normalize(R)
+    #R_ = rref_(A, tau) 
+    _, R = srref(A, tau)
+
+    #assert np.allclose(R, R_)
+
+    return R
 
 def test_rref():
     """
@@ -97,7 +149,7 @@ def test_rref():
     C = array([[0, 0.3812, 0.3735, 0.3812, -0.7548],
                [0, 0, 0.5754, 0.5811, -0.5754]])
     tau = 0.0001
-    C_ = rref(B, tau)
+    C_ = srref(B, tau)
     print C
     print C_
     assert max(abs(C - C_).flatten()) < tau
@@ -430,6 +482,8 @@ def final_reduction(R, L, B, V, order = grevlex):
     B, VB = prune_columns(B, VB)
     Gr = [R(f) for f in VB.dot(to_syms(R, *B))]
     Gr = sorted(Gr, key = lambda f: order(f.LM), reverse = True)
+
+    O = sorted(O, key = order, reverse=True)
     return O, Gr
 
 def compute(R, I, delta):
@@ -443,6 +497,8 @@ def compute(R, I, delta):
     B = get_support_basis(I)
     # Rows of V' are an approximate unitary basis {f1', ... , fr'}
     V = approx_unitary_basis(B, I, 0.0001)
+
+    # ipdb.set_trace()
 
     while True:
         L, B, V = extend_basis(R, L, B, V)
@@ -461,15 +517,19 @@ def compute(R, I, delta):
 
 def test_compute():
     R, I, G = example_simple()
-    B, G_ = compute(R, I, 0.001)
-    G = matrix_representation(B, G)
-    assert np.allclose(G, G_)
+    O, G_ = compute(R, I, 0.001)
+    B = sorted(border(R, O) + O, key = grevlex, reverse = True)
+    Gm = matrix_representation(B, G)
+    Gm_ = matrix_representation(B, G_)
+    assert np.allclose(Gm, Gm_)
 
 def test_compute_20():
     R, I, G = example_20()
-    B, G_ = compute(R, I, 0.001)
-    G = matrix_representation(B, G)
-    assert np.allclose(G, G_)
+    O, G_ = compute(R, I, 0.001)
+    B = sorted(border(R, O) + O, key = grevlex, reverse = True)
+    Gm = matrix_representation(B, G)
+    Gm_ = matrix_representation(B, G_)
+    assert np.allclose(Gm, Gm_)
 
 def border_basis_divide(R, G, f):
     """
