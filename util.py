@@ -97,9 +97,9 @@ def order_ideal(fs, order=grevlex):
             O.update(dominated_elements(list(t)))
     return sorted(O, key=grevlex, reverse=True)
 
-def row_normalize(R):
+def row_normalize(R, ord =None):
     """
     Normalize rows to have unit norm
     """
-    return array([r / norm(r) for r in R if norm(r) > 1e-10])
+    return array([r / norm(r, ord=ord) for r in R if norm(r, ord=ord) > 1e-10])
 
