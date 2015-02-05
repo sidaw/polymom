@@ -13,7 +13,7 @@ from numpy import array, zeros, atleast_2d, hstack, diag
 from numpy.linalg import norm, svd, qr
 
 from sympy import ring, RR, lex, grevlex, pprint
-from util import to_syms, tuple_diff
+from util import to_syms, tuple_diff, tuple_incr, dominated_elements
 from itertools import chain
 
 import ipdb
@@ -179,41 +179,6 @@ def example():
          ]
     return R, I
 
-def dominated_elements(lst, idx = 0):
-    """
-    Iterates over all elements that are dominated by the input list.
-    For example, (2,1) returns [(2,1), (2,0), (1,1), (1,0), (0,0), (0,1)]
-    """
-
-    # Stupid check
-    if type(lst) != list: lst = list(lst)
-
-    # Yield (a copy of) this element
-    yield tuple(lst)
-
-    # Update all subsequent indices
-    for idx_ in xrange(idx, len(lst)):
-        tmp = lst[idx]
-
-        # Ticker down this index
-        while lst[idx] > 0:
-            lst[idx] -= 1
-            for elem in dominated_elements(lst, idx+1): yield elem
-        lst[idx] = tmp
-
-def test_dominated_elements():
-    lst = [(1,2), (2,1)]
-    L = dominated_elements(lst)
-    assert (0,0) in L
-    assert (1,0) in L
-    assert (0,1) in L
-    assert (1,1) in L
-    assert (2,0) in L
-    assert (0,2) in L
-    assert (1,2) in L
-    assert (2,1) in L
-    assert (2,2) not in L
-
 def get_support_basis(fs, order=grevlex):
     """
     Get the terms spanned by support of
@@ -247,6 +212,15 @@ def test_get_order_basis():
     b = get_order_basis([f,g])
     assert b == [(2,0), (1,1), (1,0), (0,1), (0,0)]
 
+def vector_representation(L, f):
+    """
+    Construct a matrix with terms in L
+    """
+    M = zeros((1, len(L)))
+    for monom, coeff in f.terms():
+        M[0, L.index(monom)] = coeff
+    return M
+
 def matrix_representation(L, I):
     """
     Construct a matrix with terms in L
@@ -267,9 +241,9 @@ def approx_unitary_basis(L, I, tau = 1e-4):
     """
     Construct a matrix with terms in L
     """
-    # Using QR instead of RREF because...
     return rref(matrix_representation(L,I), tau)
 
+    # Using QR instead of RREF because...
     #_, V = qr(matrix_representation(L, I))
     #V[abs(V) < 1e-10] = 0
     #return row_normalize(V)
@@ -302,10 +276,11 @@ def truncated_svd(M, epsilon = 0.001):
 
 def expand_order_ideal(L, B, W):
     """
-    Expand the order ideal
+    Expand the order ideal until it contains B
     """
 
-    # Get all terms whose leading terms are in L
+    # Get all terms of polynomials whose leading terms are in L, but
+    # other terms are not
     W_ = set(chain.from_iterable([B[i] for i in w.nonzero()[0]]
         for w in W if B[lt(w)[0]] in L)).difference(L)
     if len(W_) == 0:
@@ -455,7 +430,7 @@ def final_reduction(R, L, B, V, order = grevlex):
     B, VB = prune_columns(B, VB)
     Gr = [R(f) for f in VB.dot(to_syms(R, *B))]
     Gr = sorted(Gr, key = lambda f: order(f.LM), reverse = True)
-    return Gr
+    return O, Gr
 
 def compute(R, I, delta):
     """
@@ -521,4 +496,38 @@ def test_border_basis_divide():
     f = x**3 * y**2 - x * y**2 + x**2 + 2
     r = border_basis_divide(R, G, f)
     assert r == -3.0 * x - 1.0
+
+def find_basis(G, t):
+    """
+    Find the term in the basis with leading term t
+    """
+    for g in G:
+        if g.LM == t: 
+            return g
+    else:
+        raise Exception("No such term")
+
+def get_multiplication_matrices(R, O, G):
+    """
+    Let t1, ..., tn be the elements of O.
+    Return the matrices M_1, ..., M_n
+    """
+
+    syms = [R(sym) for sym in R.symbols]
+    dO = border(R, O)
+
+    Ms = []
+    for i in xrange(len(syms)):
+        M = zeros((len(O), len(O)))
+        for j, t in enumerate(O):
+            t_ = tuple_incr(t, i) 
+            if t_ in dO:
+                b = find_basis(G,t_)
+                for t_, c in b.terms()[1:]:
+                    M[j, O.index(t_)] = c
+            else:
+                M[j, O.index(t_)] = 1
+        Ms.append(M)
+
+    return Ms
 
