@@ -18,6 +18,8 @@ from itertools import chain
 
 import ipdb
 
+do_debug = False
+
 def vert(v):
     return atleast_2d(v).T
 
@@ -83,12 +85,14 @@ def srref(A, tau = 1e-4):
     # Implements QR decomposition.
     Q, R = [], zeros((nrows, ncols))
     l0 = norm(a(0))
+    R[0, 0] = l0
     if l0 > tau:
-        R[0, 0] = l0
         Q.append(a(0)/l0)
     for i in xrange(1, ncols):
         ai = a(i)
-        qi = ai - sum(ai.dot(q) * q for q in Q)
+        qi = a(i)
+        for q in Q: # Unrolling the generator expression loop
+            qi -= ai.dot(q) * q
         li = norm(qi)
         # NOTE: This is really sketch, but gives the right answer.
         for j, q in enumerate(Q):
@@ -128,10 +132,13 @@ def rref(A, tau = 1e-4):
     #R = sp.matrix2numpy(sp.Matrix(A).rref(iszerofunc = lambda v : abs(v) < tau)[0],
     #        dtype=np.double)
     #return row_normalize(R)
-    #R_ = rref_(A, tau) 
-    _, R = srref(A, tau)
+    R_ = rref_(A, tau) 
+    R = R_
+    #_, R = srref(A, tau)
 
     #assert np.allclose(R, R_)
+
+    R[abs(R) < 1e-10] = 0
 
     return R
 
@@ -164,7 +171,7 @@ def example_trivial():
 
     R, x, y = ring('x,y', RR, grevlex)
 
-    I = [x**2 - y**2 - 1,
+    I = [x**2 + y**2 - 2,
             x + y 
             ]
 
@@ -293,7 +300,8 @@ def approx_unitary_basis(L, I, tau = 1e-4):
     """
     Construct a matrix with terms in L
     """
-    return rref(matrix_representation(L,I), tau)
+    M = rref(matrix_representation(L,I), tau)
+    return M
 
     # Using QR instead of RREF because...
     #_, V = qr(matrix_representation(L, I))
@@ -323,7 +331,7 @@ def truncated_svd(M, epsilon = 0.001):
     Computed the truncated version of M from SVD
     """
     U, S, V = svd(M)
-    S = S[S > epsilon]
+    S = S[abs(S) > epsilon]
     return U[:, :len(S)], S, V[:len(S),:]
 
 def expand_order_ideal(L, B, W):
@@ -344,6 +352,7 @@ def expand_order_ideal(L, B, W):
 
 def prune_columns(B, W):
     # Prune 0 columns
+    W[abs(W) < 1e-10] = 0
     keep = [i for (i, w) in enumerate(W.T) if norm(w) > 1e-10]
     return sel(B, keep), W[:,keep]
 
@@ -440,19 +449,34 @@ def test_border():
     dO = border(R, O)
     assert dO == [(2,0), (1,1), (0,2)]
 
-def extend_basis(R, L, B, V):
+def fnnz(v):
+    return v.nonzero()[0][0]
+
+def compute_tau(V):
+    r, s = V.shape
+    c = max((max(v)/v[fnnz(v)] for v in abs(V)))
+
+    tau = 1./np.sqrt(r + (s - r) * r**2 * c **2)
+    print "tau", tau
+    assert tau > 1e-10
+
+    return tau
+
+
+def extend_basis(R, L, B, V, delta = 1e-3):
     """
     Keep extending the basis until you reach a fix point
     """
     # Compute approximate basis extension.
-    B, V, W = approx_basis_extension(R, B, V)
+    tau = min(delta, compute_tau(V))
+    B, V, W = approx_basis_extension(R, B, V, tau)
 
     # Restrict W_ to be in the order ideal $L$
     L, B, W = restrict_lt(L, B, W)
     if len(W) > 0:
         # Combine the indices of B_
         B, V = prune_columns(B, np.vstack((V,W)))
-        return extend_basis(R, L, B, V)
+        return extend_basis(R, L, B, V, delta)
     else:
         return L, B, V
 
@@ -464,6 +488,7 @@ def final_reduction(R, L, B, V, order = grevlex):
 
     Lt = lti(B, V)
     O = L.difference(Lt)
+    assert len(O) > 0
 
     VR = []
 
@@ -496,13 +521,21 @@ def compute(R, I, delta):
     L = get_order_basis(I)
     B = get_support_basis(I)
     # Rows of V' are an approximate unitary basis {f1', ... , fr'}
-    V = approx_unitary_basis(B, I, 0.0001)
+    V = approx_unitary_basis(B, I, delta)
 
-    # ipdb.set_trace()
 
+    if do_debug:
+        ipdb.set_trace()
+
+    round = 0
+    print round, V
     while True:
-        L, B, V = extend_basis(R, L, B, V)
+        L, B, V = extend_basis(R, L, B, V, delta)
         B, V = prune_columns(B, V)
+        print round, V
+        print len(B)
+        if len(B) > 1000:
+            raise Exception("Ahhhh!")
 
         # Update order ideal $O$
         L = set(L)
@@ -512,6 +545,7 @@ def compute(R, I, delta):
             L.update(border(R, L))
         else:
             break
+        round += 1
     # Apply final reduction algorithm.
     return final_reduction(R, L, B, V)
 
