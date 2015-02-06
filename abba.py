@@ -9,7 +9,7 @@ Computation, 44(11), 1566–1591. doi:10.1016/j.jsc.2008.11.010
 
 import numpy as np
 import sympy as sp
-from numpy import array, zeros, atleast_2d, hstack, diag
+from numpy import array, zeros, atleast_2d, hstack, diag, sign
 from numpy.linalg import norm, svd, qr
 
 from sympy import ring, RR, lex, grevlex, pprint
@@ -19,6 +19,10 @@ from itertools import chain
 import ipdb
 
 do_debug = False
+eps = 1e-10
+
+def problem_kids(M):
+    return (abs(M[M.nonzero()]) < eps).any()
 
 def vert(v):
     return atleast_2d(v).T
@@ -39,11 +43,24 @@ def print_space(R, B, V):
     for v in V.dot(to_syms(R,*B)):
         pprint(v)
 
-def row_normalize(R):
+def row_reduce(R, tau = eps):
+    """
+    Zero all rows with leading term from below
+    """
+    nrows, _ = R.shape
+    for i in xrange(nrows-1, 0, -1):
+        k, _ = lt(R[i,:], tau)
+        for j in xrange(i):
+            R[j, :] -= R[i,:] * R[j,k] / R[i,k]
+
+    return array([r / norm(r) for r in R if norm(r) > tau])
+
+def row_normalize(R, tau = eps):
     """
     Normalize rows to have unit norm
     """
-    return array([r / norm(r) for r in R if norm(r) > 1e-10])
+    return array([r / norm(r) * sign(lt(r, tau)[1]) 
+        for r in R if norm(r) > tau])
 
 def lt_normalize(R):
     """
@@ -118,6 +135,12 @@ def srref(A, tau = 1e-4):
 
     return array(Q).T, R
 
+def srref_(A, tau = 1e-4):
+    Q, R = np.linalg.qr(A)
+    R = row_reduce(R, tau)
+    R = row_normalize(R, tau)
+    return Q, R
+
 def rref_(A, tau = 1e-4):
     R = sp.matrix2numpy(sp.Matrix(A).rref(iszerofunc = lambda v : abs(v) < tau)[0],
             dtype=np.double)
@@ -133,12 +156,12 @@ def rref(A, tau = 1e-4):
     #        dtype=np.double)
     #return row_normalize(R)
     R_ = rref_(A, tau) 
-    R = R_
-    #_, R = srref(A, tau)
+    #R = R_
+    _, R = srref_(A, tau)
 
-    #assert np.allclose(R, R_)
+    assert np.allclose(R, R_)
 
-    R[abs(R) < 1e-10] = 0
+    R[abs(R) < eps] = 0
 
     return R
 
@@ -305,7 +328,7 @@ def approx_unitary_basis(L, I, tau = 1e-4):
 
     # Using QR instead of RREF because...
     #_, V = qr(matrix_representation(L, I))
-    #V[abs(V) < 1e-10] = 0
+    #V[abs(V) < eps] = 0
     #return row_normalize(V)
 
 def test_approx_unitary_basis():
@@ -352,8 +375,8 @@ def expand_order_ideal(L, B, W):
 
 def prune_columns(B, W):
     # Prune 0 columns
-    W[abs(W) < 1e-10] = 0
-    keep = [i for (i, w) in enumerate(W.T) if norm(w) > 1e-10]
+    W[abs(W) < eps] = 0
+    keep = [i for (i, w) in enumerate(W.T) if norm(w) > eps]
     return sel(B, keep), W[:,keep]
 
 def restrict_lt(L, B, W, order = grevlex):
@@ -416,7 +439,7 @@ def approx_basis_extension(R, B, V, tau = 1e-4):
     _, _, V_B = truncated_svd(V_B, tau)
     V_B = rref(V_B, tau) # TODO: Set tau appropriately.
     #_, V_B = qr(V_B)
-    #V_B[abs(V_B) < 1e-10] = 0
+    #V_B[abs(V_B) < eps] = 0
     
     return B_, V_A, V_B
 
@@ -458,7 +481,7 @@ def compute_tau(V):
 
     tau = 1./np.sqrt(r + (s - r) * r**2 * c **2)
     print "tau", tau
-    assert tau > 1e-10
+    assert tau > eps
 
     return tau
 
@@ -470,14 +493,18 @@ def extend_basis(R, L, B, V, delta = 1e-3):
     # Compute approximate basis extension.
     tau = min(delta, compute_tau(V))
     B, V, W = approx_basis_extension(R, B, V, tau)
+    assert not problem_kids(V)
+    assert not problem_kids(W)
 
     # Restrict W_ to be in the order ideal $L$
     L, B, W = restrict_lt(L, B, W)
+    assert not problem_kids(W)
     if len(W) > 0:
         # Combine the indices of B_
         B, V = prune_columns(B, np.vstack((V,W)))
         return extend_basis(R, L, B, V, delta)
     else:
+        B, V = prune_columns(B, V)
         return L, B, V
 
 def final_reduction(R, L, B, V, order = grevlex):
@@ -522,6 +549,7 @@ def compute(R, I, delta):
     B = get_support_basis(I)
     # Rows of V' are an approximate unitary basis {f1', ... , fr'}
     V = approx_unitary_basis(B, I, delta)
+    assert not problem_kids(V)
 
 
     if do_debug:
@@ -532,6 +560,7 @@ def compute(R, I, delta):
     while True:
         L, B, V = extend_basis(R, L, B, V, delta)
         B, V = prune_columns(B, V)
+        assert not problem_kids(V)
         print round, V
         print len(B)
         if len(B) > 1000:
