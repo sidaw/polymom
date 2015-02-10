@@ -5,8 +5,11 @@ Various utility methods
 import operator
 from itertools import chain
 from sympy import grevlex
-from numpy import array
+from numpy import array, zeros
 from numpy.linalg import norm
+import ipdb
+
+eps = 1e-16
 
 def tuple_add(t1, t2):
     """Elementwise addition of two tuples"""
@@ -15,6 +18,12 @@ def tuple_add(t1, t2):
 def tuple_diff(t1, t2):
     """Elementwise addition of two tuples"""
     return tuple( t1[i] - t2[i] for i in xrange(len(t1)) )
+
+def tuple_min(t1, t2):
+    return tuple(min(a, b) for a, b in zip(t1, t2))
+
+def tuple_max(t1, t2):
+    return tuple(max(a, b) for a, b in zip(t1, t2))
 
 def tuple_incr(t1, idx, val=1):
     return t1[:idx] + (t1[idx]+val,) + t1[idx+1:]
@@ -97,9 +106,83 @@ def order_ideal(fs, order=grevlex):
             O.update(dominated_elements(list(t)))
     return sorted(O, key=grevlex, reverse=True)
 
-def row_normalize(R, ord =None):
+def lt(arr, tau = 0):
+    """
+    Get the leading term of arr > tau
+    """
+    for idx, elem in enumerate(arr):
+        if abs(elem) > tau:
+            return idx, elem
+    return 0, arr[0]
+
+def lm(arr):
+    return lt(arr)[0]
+
+def lc(arr):
+    return lt(arr)[1]
+
+def lt_normalize(R):
+    """
+    Normalize to have the max term be 1
+    """
+    rows, _ = R.shape
+    for r in xrange(rows):
+        R[r,:] /= max(abs(R[r,:]))
+    return R
+
+def row_normalize(R, tau = eps, ord=None):
     """
     Normalize rows to have unit norm
     """
-    return array([r / norm(r, ord=ord) for r in R if norm(r, ord=ord) > 1e-10])
+    for r in R:
+        li = norm(r, ord=ord)
+        if li < tau:
+            r[:] = 0
+        else:
+            r /= li
+    return R
+
+def row_reduce(R, tau = eps):
+    """
+    Zero all rows with leading term from below
+    """
+    nrows, _ = R.shape
+    for i in xrange(nrows-1, 0, -1):
+        k, _ = lt(R[i,:], tau)
+        for j in xrange(i):
+            R[j, :] -= R[i,:] * R[j,k] / R[i,k]
+
+    return R
+
+def srref(A, tau = eps):
+    """
+    Compute the stabilized row reduced echelon form.
+    """
+    m, n = A.shape
+
+    Q = []
+    R = zeros((min(m,n), n)) # Rows
+
+    for i in xrange(n):
+        # Remove any contribution from previous rows
+        ai = array(A[:, i]) # Make a copy.
+        for j, qj in enumerate(Q):
+            R[j, i] = ai.dot(qj)
+            ai -= ai.dot(qj) * qj
+        
+        li = norm(ai)
+        if li > tau:
+            assert len(Q) < min(m,n)
+            # Add a new column to Q
+            Q.append(ai / li)
+            # And write down the contribution
+            R[i, i] = li
+
+    # Convert to reduced row echelon form
+    row_reduce(R, tau)
+
+    # row_normalize
+    row_normalize(R, tau)
+
+    return array(Q).T, R
 

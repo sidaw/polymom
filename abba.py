@@ -13,7 +13,7 @@ from numpy import array, zeros, atleast_2d, hstack, diag, sign
 from numpy.linalg import norm, svd, qr
 
 from sympy import ring, RR, lex, grevlex, pprint
-from util import to_syms, tuple_diff, tuple_incr, dominated_elements
+from util import *
 from itertools import chain
 
 import ipdb
@@ -43,46 +43,6 @@ def print_space(R, B, V):
     for v in V.dot(to_syms(R,*B)):
         pprint(v)
 
-def row_reduce(R, tau = eps):
-    """
-    Zero all rows with leading term from below
-    """
-    nrows, _ = R.shape
-    for i in xrange(nrows-1, 0, -1):
-        k, _ = lt(R[i,:], tau)
-        for j in xrange(i):
-            R[j, :] -= R[i,:] * R[j,k] / R[i,k]
-
-    return array([r / norm(r) for r in R if norm(r) > tau])
-
-def row_normalize(R, tau = eps):
-    """
-    Normalize rows to have unit norm
-    """
-    return array([r / norm(r) * sign(lt(r, tau)[1]) 
-        for r in R if norm(r) > tau])
-
-def lt_normalize(R):
-    """
-    Normalize to have the max term be 1
-    """
-    rows, _ = R.shape
-    for r in xrange(rows):
-        R[r,:] /= max(abs(R[r,:]))
-    return R
-
-def lt(arr, tau = 0):
-    """
-    Get the leading term of arr > tau
-    """
-    return next((idx, elem) for (idx, elem) in enumerate(arr) if abs(elem) > tau)
-
-def lm(arr):
-    return lt(arr)[0]
-
-def lc(arr):
-    return lt(arr)[1]
-
 def coeff(B, v, term):
     return v[B.index(term)]
 
@@ -91,49 +51,6 @@ def lti(B, V):
     Leading term ideal
     """
     return [B[lt(f)[0]] for f in V]
-
-def srref(A, tau = 1e-4):
-    """
-    Stabilized row reduced echelon form
-    """
-    nrows, ncols = A.shape
-    def a(i):
-        return A[:,i]
-    # Implements QR decomposition.
-    Q, R = [], zeros((nrows, ncols))
-    l0 = norm(a(0))
-    R[0, 0] = l0
-    if l0 > tau:
-        Q.append(a(0)/l0)
-    for i in xrange(1, ncols):
-        ai = a(i)
-        qi = a(i)
-        for q in Q: # Unrolling the generator expression loop
-            qi -= ai.dot(q) * q
-        li = norm(qi)
-        # NOTE: This is really sketch, but gives the right answer.
-        for j, q in enumerate(Q):
-            R[j,i] = ai.dot(q)
-        if len(Q) < nrows:
-            R[len(Q),i] = li
-        if li > tau:
-            Q.append(qi/li)
-
-    R = row_normalize(R)
-    # Now, from last row, clear out first non zero entry of each row -
-    # this is reduced row echelon form.
-    for i in xrange(len(R)-1, 0, -1):
-        ri = R[i,:]
-        pivot = ri.nonzero()[0][0]
-        for j in xrange(i):
-            R[j,:] -= R[i,:] * R[j,pivot] / R[i,pivot]
-    # Clean out things < eps
-    R[abs(R) < 1e-15] = 0
-
-    # Finally, row normalize
-    R = row_normalize(R)
-
-    return array(Q).T, R
 
 def srref_(A, tau = 1e-4):
     Q, R = np.linalg.qr(A)
