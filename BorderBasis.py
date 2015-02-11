@@ -150,6 +150,52 @@ class BorderBasedUniverse(ComputationalUniverse):
         self.border = BorderBasedUniverse.simplify_border(self.border +
                 sum([x * b for b in self.border] for x in self.symbols))
 
+    def extend_within(self, V):
+        r"""
+        Extend the basis $V$ within the universe.
+        Essentially, this computes $V^+ \cap L$
+        """
+        raise NotImplementedError()
+
+    def stable_extension(self, V):
+        r"""
+        Extend the basis $V$ within the universe till fix point.
+        """
+        V, W = self.extend_within(V)
+        if len(W) == 0:
+            return V
+        else:
+            return self.stable_extension(np.hstack((V,W)))
+
+        raise NotImplementedError()
+
+    def as_vector(self, f):
+        r"""
+        Represent f as a vector in the universe.
+        """
+        raise NotImplementedError()
+
+    def vector_space(self, fs):
+        r"""
+        Find a vector space spanning the set of polynomials f.
+        """
+        V = array(self.as_vector(f) for f in fs)
+        _, V_ = srref(V)
+        return V_
+
+    def supplementary_space(self, V):
+        r"""
+        Find a the supplementary space of V, such that L = B ⊕ V
+        """
+        raise NotImplementedError()
+
+    def contains_extension(self, v):
+        r"""
+        Let v be a indicator vector of basis elements $B ⊆ L$. 
+        This function returns whether or not $B⁺ ⊆ L$.
+        """
+        raise NotImplementedError()
+
     @staticmethod
     def from_support(I):
         """
@@ -168,17 +214,17 @@ class BorderBasis(Basis):
         """
         Find the basis element with the nearest leading term
         """
-        pass
+        raise NotImplementedError()
 
 
     def find_basis_with_lt(self, t):
         """
         Find the basis element with leading term
         """
-        pass
+        raise NotImplementedError()
 
     def quotient(self, f):
-        pass
+        raise NotImplementedError()
 
 class BorderBasisFactory(object):
     """
@@ -189,26 +235,33 @@ class BorderBasisFactory(object):
         self.delta = delta
         self.order = order
 
-    def __final_reduction(self, B): 
-        pass
+    def __final_reduction(self, L, V, B): 
+        raise NotImplementedError()
 
-    def generate(self, R, fs):
+    def __inner_loop(self, L, V):
+        # Get the stable extension
+        V = L.stable_extension(V)
+
+        B = L.supplementary_space(V) 
+        # Check if we've reached fixed point.
+        if not L.contains_extension(B):
+            # TODO: An optimization is to extend L by the terms in B.
+            return self.__inner_loop(L.extend(), V)
+        else:
+            return L, V, B
+
+    def generate(self, R, I):
         """
         Return a border basis for fs.
         """
 
-        # Store the computation universe
-
-
-        span = MonomialSpan.from_polynomials(R, fs, self.order)
-        approximate_unitary(span, self.delta)
-
-        while True:
-            # Extend basis
-            # Prune columns
-            # Are the leading terms contained in the border?
-            pass
+        # Get the computation universe.
+        L = BorderBasedUniverse.from_support(support(I))
+        # Get a linear basis for I
+        V = L.__vector_space(I)
+        L, V, B = self.__inner_loop(L, V)
 
         # Final reduction
-        pass
+        B, G = self.__final_reduction(L, V, B)
+        return B, G
 
