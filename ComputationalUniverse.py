@@ -71,8 +71,11 @@ class ComputationalUniverse(object):
         """
         raise NotImplementedError()
 
-    def monom(self, idx):
-        return prod(x**i for x, i in zip(self._symbols, self.term(idx)))
+    def monom(self, term):
+        """
+        Return the monomial from the ring representing this term tuple
+        """
+        return prod(x**i for x, i in zip(self._symbols, term))
 
     def max_degree(self, sym):
         """
@@ -91,6 +94,16 @@ class ComputationalUniverse(object):
         Extend by union with extensions in every dimension
         """
         raise NotImplementedError()
+
+    def border(self, ts):
+        """
+        Return the border of elements
+        """
+        return sorted(BorderBasedUniverse.upper_border(tuple_incr(t, i) 
+            for t in ts 
+            for i in xrange(self._nsymbols)),
+                key=self._order, reverse=True)
+
 
     def as_vector(self, f):
         r"""
@@ -125,7 +138,7 @@ class BorderBasedUniverse(ComputationalUniverse):
 
     def __init__(self, R, border, tau=eps):
         super(BorderBasedUniverse, self).__init__(R, tau)
-        self.border = border
+        self._border = border
         self._max_degrees = reduce(tuple_max, border)
         self._terms = self.__build_index()
         self._nterms = len(self._terms)
@@ -136,7 +149,7 @@ class BorderBasedUniverse(ComputationalUniverse):
         """
         return sorted(
                 set(chain.from_iterable(dominated_elements(b)
-                    for b in self.border)),
+                    for b in self._border)),
                 key=self._order, reverse=True)
 
     def as_vector(self, f):
@@ -155,7 +168,7 @@ class BorderBasedUniverse(ComputationalUniverse):
             idxs = zip(rows, cols)
         else:
             raise Exception("Invalid format")
-        return sum(v[idx] * self.monom(i) for (idx, i) in zip(idxs,cols))
+        return sum(v[idx] * self.monom(self.term(i)) for (idx, i) in zip(idxs,cols))
 
     def vector_space(self, fs):
         r"""
@@ -192,7 +205,7 @@ class BorderBasedUniverse(ComputationalUniverse):
                     return False
             return True
         elif isinstance(f, tuple):
-            return BorderBasedUniverse.border_contains(self.border, f)
+            return BorderBasedUniverse.border_contains(self._border, f)
 
     @staticmethod
     def border_contains(L, t):
@@ -301,8 +314,8 @@ class BorderBasedUniverse(ComputationalUniverse):
         Extend the border by one
         Appropriately updates the indices of each of the matrices V
         """
-        border = BorderBasedUniverse.upper_border(self.border +
-                list(chain.from_iterable([tuple_incr(b, x) for b in self.border]
+        border = BorderBasedUniverse.upper_border(self._border +
+                list(chain.from_iterable([tuple_incr(b, x) for b in self._border]
                     for x in xrange(self._nsymbols))))
         L = BorderBasedUniverse(self._ring, border)
         Vs = tuple(BorderBasedUniverse.update_vector(self, L, V) for V in Vs)
@@ -317,7 +330,7 @@ class BorderBasedUniverse(ComputationalUniverse):
         R = ring('x,y', RR)[0]
         L = BorderBasedUniverse(R, [(2, 1), (1, 2)])
         L.extend()
-        assert L.border == [(3, 1), (2, 2), (1, 3)]
+        assert L._border == [(3, 1), (2, 2), (1, 3)]
 
     @staticmethod
     def update_vector(old_universe, new_universe, arr):

@@ -9,7 +9,7 @@ from numpy import array, zeros, diag, sqrt
 from numpy.linalg import eig, inv, svd
 import scipy as sc 
 import scipy.sparse
-#import ipdb
+import ipdb
 
 eps = 1e-16
 
@@ -148,13 +148,12 @@ def lc(arr, tau=0):
     """Returns leading coefficient"""
     return lt(arr, tau)[1]
 
-def lt_normalize(R):
+def lt_normalize(R, tau=0):
     """
     Normalize to have the max term be 1
     """
-    rows, _ = R.shape
-    for r in xrange(rows):
-        R[r,:] /= max(abs(R[r,:]))
+    for i in xrange(R.shape[0]):
+        R[i] /= lc(R[i], tau)
     return R
 
 def row_normalize(R, tau = eps):

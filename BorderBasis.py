@@ -4,37 +4,41 @@
 Constructing border bases
 """
 
+from sys import maxint
 import numpy as np
 import sympy as sp
+import scipy as sc
 from numpy import array, zeros, atleast_2d, hstack, diag
 from numpy.linalg import norm, svd, qr
+from scipy.sparse import csr_matrix
 
 from sympy import ring, RR, lex, grevlex, pprint
 from util import *
 from itertools import chain
 
-#from MonomialSpan import MonomialSpan, approximate_unitary
 from ComputationalUniverse import BorderBasedUniverse, DegreeBoundedUniverse
+
+import ipdb
 
 class Basis(object):
     """
     A basis supports some basis functionalities of quotienting and division.
     """
 
-    def __init__(self, L, R, generators):
+    def __init__(self, L, generators):
         """
         @param L - computational universe
         @param generators - Generators of the basis
         """
         self.L = L 
-        self.__generators = generators
+        self._generators = generators
 
     @property
     def generator_basis(self):
         """
         Return generators basis
         """
-        return self.__generators
+        return self._generators
 
     @property
     def quotient_basis(self):
@@ -78,21 +82,46 @@ class BorderBasis(Basis):
     A border basis.
     """
 
+    def __init__(self, L, O, V):
+        super(BorderBasis, self).__init__(L, L.as_polys(V))
+        self.O = O
+        self.dO = L.border(O)
+        self.V = V
+
     def find_basis_nearest_lt(self, t):
         """
         Find the basis element with the nearest leading term
         """
-        raise NotImplementedError()
+        # Find the index closest to t
+        closest, dist = None, maxint
+        for t_ in self.dO:
+            d = tuple_diff(t, t_)
+            if any(idx < 0 for idx in d): continue
+            dist_ = sum(d)
+            if dist_ < dist:
+                closest, dist = t_, dist_
+        assert closest is not None
 
+        return self._generators[self.dO.index(closest)]
 
     def find_basis_with_lt(self, t):
         """
         Find the basis element with leading term
         """
-        raise NotImplementedError()
+        idx = self.dO.index(t)
+        return self._generators[idx]
 
     def quotient(self, f):
-        raise NotImplementedError()
+        """
+        Compute the quotient
+        """
+        while True:
+            if f.LM in self.O:
+                return f
+            else:
+                # Find the nearest element on the border, and eliminate
+                b = self.find_basis_nearest_lt(f.LM)
+                f -= f.LC/b.LC * self.L.monom(tuple_diff(f.LM, b.LM)) * b
 
 class BorderBasisFactory(object):
     """
@@ -112,9 +141,13 @@ class BorderBasisFactory(object):
         @params: O - order ideal
         """
         assert len(O) > 0
+        dO = set(L.index(t) for t in L.border(O))
 
-        # Ensure we are in rref.
+        # Ensure we are in rref.  
         _, V = srref(V, self.delta)
+        # Pick only those vectors on the border
+        V = array([v for v in V if lm(v) in dO])
+
         # set leading coefficients to be 1
         V = lt_normalize(V)
         return O, V
@@ -125,6 +158,7 @@ class BorderBasisFactory(object):
         supplementary space, terminate if $B⁺ ⊆ L$, otherwise, recurse
         with $L⁺$.
         """
+        ipdb.set_trace()
         # Get the stable extension
         V = L.stable_extension(V)
 
@@ -145,10 +179,11 @@ class BorderBasisFactory(object):
         L = DegreeBoundedUniverse.from_support(R, I, tau=self.delta)
         # Get a linear basis for I
         V = L.vector_space(I)
-        _, V = srref(V, self.delta)
+        _, V = srref(V, self.delta) # Start sparse!
+        V = csr_matrix(V)
         L, V, O = self.__inner_loop(L, V)
 
         # Final reduction
         O, V = self.__final_reduction(L, V, O)
-        return L, O, V
+        return BorderBasis(L, O, V)
 

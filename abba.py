@@ -72,11 +72,12 @@ def rref(A, tau = 1e-4):
     #R = sp.matrix2numpy(sp.Matrix(A).rref(iszerofunc = lambda v : abs(v) < tau)[0],
     #        dtype=np.double)
     #return row_normalize(R)
-    R_ = rref_(A, tau) 
+    #R_ = rref_(A, tau) 
     #R = R_
-    _, R = srref_(A, tau)
+    #_, R = srref_(A, tau)
+    _, R = srref(A, tau)
 
-    assert np.allclose(R, R_)
+    #assert np.allclose(R, R_)
 
     R[abs(R) < eps] = 0
 
@@ -344,11 +345,12 @@ def approx_basis_extension(R, B, V, tau = 1e-4):
     # Remove approximately zero rows
     V_B = array([vb for vb in V_B if norm(vb) > tau])
     
-    # Compute the e-truncated SVD and thus the ONB row space.
-    _, _, V_B = truncated_svd(V_B, tau)
-    V_B = rref(V_B, tau) # TODO: Set tau appropriately.
-    #_, V_B = qr(V_B)
-    #V_B[abs(V_B) < eps] = 0
+    if V_B.shape[0] > 0:
+        # Compute the e-truncated SVD and thus the ONB row space.
+        _, _, V_B = truncated_svd(V_B, tau)
+        V_B = rref(V_B, tau) # TODO: Set tau appropriately.
+        #_, V_B = qr(V_B)
+        #V_B[abs(V_B) < eps] = 0
     
     return B_, V_A, V_B
 
