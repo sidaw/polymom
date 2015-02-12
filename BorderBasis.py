@@ -103,10 +103,28 @@ class BorderBasisFactory(object):
         self.delta = delta
         self.order = order
 
-    def __final_reduction(self, L, V, B): 
-        raise NotImplementedError()
+    def __final_reduction(self, L, V, O): 
+        """
+        The final reduction algorithm ensures that each term in the
+        border is uniquely associated with each term in basis V
+        @params: L - computation universe
+        @params: V - O pre-basis
+        @params: O - order ideal
+        """
+        assert len(O) > 0
+
+        # Ensure we are in rref.
+        _, V = srref(V, self.delta)
+        # set leading coefficients to be 1
+        V = lt_normalize(V)
+        return O, V
 
     def __inner_loop(self, L, V):
+        """
+        Inner loop: Find the L-stable span of V. If B be the
+        supplementary space, terminate if $B⁺ ⊆ L$, otherwise, recurse
+        with $L⁺$.
+        """
         # Get the stable extension
         V = L.stable_extension(V)
 
@@ -128,9 +146,9 @@ class BorderBasisFactory(object):
         # Get a linear basis for I
         V = L.vector_space(I)
         _, V = srref(V, self.delta)
-        L, V, B = self.__inner_loop(L, V)
+        L, V, O = self.__inner_loop(L, V)
 
         # Final reduction
-        B, G = self.__final_reduction(L, V, B)
-        return B, G
+        O, V = self.__final_reduction(L, V, O)
+        return L, O, V
 

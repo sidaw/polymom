@@ -429,6 +429,7 @@ def final_reduction(R, L, B, V, order = grevlex):
     VR = []
 
     # The rows are sorted in order of their term ordering
+    # Dude, this is just reduced row form!
     for v in reversed(V):
         H = [t for t in v.nonzero()[0][1:] if B[t] not in O]
         for t in H:

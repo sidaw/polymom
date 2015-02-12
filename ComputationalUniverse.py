@@ -71,6 +71,9 @@ class ComputationalUniverse(object):
         """
         raise NotImplementedError()
 
+    def monom(self, idx):
+        return prod(x**i for x, i in zip(self._symbols, self.term(idx)))
+
     def max_degree(self, sym):
         """
         Get the maximum degree of the symbol in the universe
@@ -103,6 +106,18 @@ class ComputationalUniverse(object):
         _, V_ = srref(V)
         return V_
 
+    def as_poly(self, v):
+        r"""
+        Represent v as a polynomial in the universe.
+        """
+        raise NotImplementedError()
+
+    def as_polys(self, V):
+        r"""
+        Represent v as a polynomial.
+        """
+        return [self.as_poly(v) for v in V]
+
 class BorderBasedUniverse(ComputationalUniverse):
     """
     Represents a universe by its border
@@ -130,6 +145,17 @@ class BorderBasedUniverse(ComputationalUniverse):
         nrows, ncols = 1, self._nterms
         data = [float(v) for v in f.values()]
         return csr_matrix((data, (rows, cols)), shape=(nrows, ncols))
+
+    def as_poly(self, v):
+        if isinstance(v, np.ndarray):
+            cols, = v.nonzero()
+            idxs = cols
+        elif isinstance(v, sc.sparse.base.spmatrix):
+            rows, cols = v.nonzero()
+            idxs = zip(rows, cols)
+        else:
+            raise Exception("Invalid format")
+        return sum(v[idx] * self.monom(i) for (idx, i) in zip(idxs,cols))
 
     def vector_space(self, fs):
         r"""
@@ -316,7 +342,10 @@ class BorderBasedUniverse(ComputationalUniverse):
         row_index = 0
         for i in xrange(self._nsymbols):
             for v in V:
-                _, cols = v.nonzero()
+                if isinstance(V, np.ndarray):
+                    cols, = v.nonzero()
+                elif isinstance(V, sc.sparse.base.spmatrix):
+                    _, cols = v.nonzero()
                 try:
                     cols = list(map(self.index,
                         (tuple_incr(t, i) for t in map(self.term, cols))))
