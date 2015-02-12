@@ -5,9 +5,9 @@ Various utility methods
 import operator
 from itertools import chain
 from sympy import grevlex
-from numpy import array, zeros
-from numpy.linalg import norm
-import ipdb
+from numpy import array, zeros, diag
+from numpy.linalg import norm, eig, inv
+#import ipdb
 
 eps = 1e-16
 
@@ -20,12 +20,15 @@ def tuple_diff(t1, t2):
     return tuple( t1[i] - t2[i] for i in xrange(len(t1)) )
 
 def tuple_min(t1, t2):
+    """Return the entry-wise minimum of the two tuples"""
     return tuple(min(a, b) for a, b in zip(t1, t2))
 
 def tuple_max(t1, t2):
+    """Return the entry-wise maximum of the two tuples"""
     return tuple(max(a, b) for a, b in zip(t1, t2))
 
 def tuple_incr(t1, idx, val=1):
+    """Return a tuple with the index idx incremented by val"""
     return t1[:idx] + (t1[idx]+val,) + t1[idx+1:]
 
 def nonzeros(lst):
@@ -33,60 +36,73 @@ def nonzeros(lst):
     return (i for i in xrange(len(lst)) if lst[i] > 0)
 
 def first(iterable, default=None, key=None):
+    """
+    Return the first element in the iterable
+    """
     if key is None:
         for el in iterable:
             return el
     else:
-        for el in iterable:
-            return el
+        for key_, el in iterable:
+            if key == key_:
+                return el
     return default
 
 def prod(iterable):
+    """Get the product of elements in the iterable"""
     return reduce(operator.mul, iterable, 1)
 
 def to_syms(R, *monoms):
     """
     Get the symbols of an ideal I
     """
-    return [prod(R(R.symbols[i])**j 
-                for (i, j) in enumerate(monom)) 
+    return [prod(R(R.symbols[i])**j
+                for (i, j) in enumerate(monom))
                     for monom in monoms]
+
+#def dominated_elements(lst, idx = 0):
+#    """
+#    Iterates over all elements that are dominated by the input list.
+#    For example, (2,1) returns [(2,1), (2,0), (1,1), (1,0), (0,0), (0,1)]
+#    TODO: buggy
+#    """
+#
+#    # Stupid check
+#    if type(lst) != list: lst = list(lst)
+#
+#    # Yield (a copy of) this element
+#    yield tuple(lst)
+#
+#    if idx < len(lst):
+#        # Update all subsequent indices
+#        tmp = lst[idx]
+#
+#        # Ticker down this index
+#        while lst[idx] >= 0:
+#            for elem in dominated_elements(lst, idx+1): yield elem
+#            lst[idx] -= 1
+#        lst[idx] = tmp
 
 def dominated_elements(lst, idx = 0):
     """
     Iterates over all elements that are dominated by the input list.
     For example, (2,1) returns [(2,1), (2,0), (1,1), (1,0), (0,0), (0,1)]
     """
-
     # Stupid check
-    if type(lst) != list: lst = list(lst)
-
-    # Yield (a copy of) this element
-    yield tuple(lst)
-
-    # Update all subsequent indices
-    for idx_ in xrange(idx, len(lst)):
+    if not isinstance(lst, list): lst = list(lst)
+    if idx == len(lst): yield tuple(lst)
+    else:
         tmp = lst[idx]
-
-        # Ticker down this index
-        while lst[idx] > 0:
-            lst[idx] -= 1
+        # For each value of this index, update other values
+        while lst[idx] >= 0:
             for elem in dominated_elements(lst, idx+1): yield elem
+            lst[idx] -= 1
         lst[idx] = tmp
 
 def test_dominated_elements():
-    lst = [(1,2), (2,1)]
-    L = dominated_elements(lst)
-    assert (0,0) in L
-    assert (1,0) in L
-    assert (0,1) in L
-    assert (1,1) in L
-    assert (2,0) in L
-    assert (0,2) in L
-    assert (1,2) in L
-    assert (2,1) in L
-    assert (2,2) not in L
-
+    """Simple test of generating dominated elements"""
+    L = list(dominated_elements((2,1)))
+    assert L == [(2,1), (2,0), (1,1), (1,0), (0,1), (0,0)]
 
 def support(fs, order=grevlex):
     """
@@ -94,7 +110,7 @@ def support(fs, order=grevlex):
     f_1, ... f_n
     """
     O = set(chain.from_iterable(f.monoms() for f in fs))
-    return sorted(O, key=grevlex, reverse=True)
+    return sorted(O, key=order, reverse=True)
 
 def order_ideal(fs, order=grevlex):
     """
@@ -116,9 +132,11 @@ def lt(arr, tau = 0):
     return 0, arr[0]
 
 def lm(arr):
+    """Returns leading monomial"""
     return lt(arr)[0]
 
 def lc(arr):
+    """Returns leading coefficient"""
     return lt(arr)[1]
 
 def lt_normalize(R):
@@ -130,12 +148,12 @@ def lt_normalize(R):
         R[r,:] /= max(abs(R[r,:]))
     return R
 
-def row_normalize(R, tau = eps, ord=None):
+def row_normalize(R, tau = eps, order=None):
     """
     Normalize rows to have unit norm
     """
     for r in R:
-        li = norm(r, ord=ord)
+        li = norm(r, ord=order)
         if li < tau:
             r[:] = 0
         else:
@@ -169,7 +187,6 @@ def srref(A, tau = eps):
         for j, qj in enumerate(Q):
             R[j, i] = ai.dot(qj)
             ai -= ai.dot(qj) * qj
-        
         li = norm(ai)
         if li > tau:
             assert len(Q) < min(m,n)
@@ -185,4 +202,21 @@ def srref(A, tau = eps):
     row_normalize(R, tau)
 
     return array(Q).T, R
+
+def simultaneous_diagonalize(Ms):
+    """
+    Simultaneously diagonalize a set of matrices.
+    * Currently uses a crappy "diagonalize one and use for the rest"
+      method.
+    TODO: Use QR1JD.
+    """
+    it = iter(Ms)
+    M = it.next()
+    l, R = eig(M)
+    Ri = inv(R)
+    L = [l]
+    for M in it:
+        l = diag(Ri.dot(M).dot(R))
+        L.append(l)
+    return zip(*L)
 
