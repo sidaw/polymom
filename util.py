@@ -43,14 +43,19 @@ def tuple_incr(t1, idx, val=1):
     """Return a tuple with the index idx incremented by val"""
     return t1[:idx] + (t1[idx]+val,) + t1[idx+1:]
 
+def tuple_border(t):
+    """Return the border of a tuple"""
+    return [tuple_incr(t, i) for i in xrange(len(t))]
+
 def tuple_subs(t1, t2):
     """
-    Does t1_i >= t2_i for all i? 
+    Does t1_i > t2_i for all i? 
     """
-    for idx in xrange(len(t1)):
-        if t1[idx] < t2[idx]:
-            return False
-    return True
+    d = tuple_diff(t1, t2)
+    if any(i < 0 for i in d):
+        return False
+    else:
+        return True
 
 def nonzeros(lst):
     """Return non-zero indices of a list"""

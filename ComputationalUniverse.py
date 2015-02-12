@@ -99,11 +99,8 @@ class ComputationalUniverse(object):
         """
         Return the border of elements
         """
-        return sorted(BorderBasedUniverse.upper_border(tuple_incr(t, i) 
-            for t in ts 
-            for i in xrange(self._nsymbols)),
-                key=self._order, reverse=True)
-
+        return BorderBasedUniverse.upper_border(chain.from_iterable(
+            tuple_border(t) for t in ts), order=self._order)
 
     def as_vector(self, f):
         r"""
@@ -229,34 +226,18 @@ class BorderBasedUniverse(ComputationalUniverse):
         assert not BorderBasedUniverse.border_contains(L, (2, 2))
 
     @staticmethod
-    def upper_border(L):
+    def upper_border(L, order=grevlex):
         """
         Simplify a collection of elements so that it just contains the
         border.
         """
-        it = iter(L)
-
-        # Maintain a list of elements on the border.
-        L_ = [next(it)]
-
-        for l in it:
-            # If anything contains something that is strictly less than the
-            # other element in the border, don't keep it.
-            for i in xrange(len(L_)-1, -1, -1):
-                l_ = L_[i]
-                # If this element (l) is subsumed by something in the new
-                # border, ignore it.
-                if tuple_subs(l_, l):
-                    break
-                # If this element (l) subsumes something in the new
-                # border, remove from the new border
-                elif tuple_subs(l, l_):
-                    del L_[i]
-            else:
-                # If you've come this far, nothing in the new border
-                # subsumes you, so add.
-                L_.append(l)
-        return L_
+        L = set(L)
+        # Remove something from the set iff it's border is already in
+        # the set.
+        for t in sorted(L, key=grevlex):
+            if L.issuperset(tuple_border(t)):
+                L.discard(t)
+        return sorted(L, key=order, reverse=True)
 
     @staticmethod
     def test_upper_border():
@@ -264,50 +245,16 @@ class BorderBasedUniverse(ComputationalUniverse):
         Test simplify border
         """
         L = [(2, 1), (1, 1), (0, 1), (1, 2)]
-        L_ = sorted(BorderBasedUniverse.upper_border(L))
-        assert L_ == [(1, 2), (2, 1)]
+        L_ = BorderBasedUniverse.upper_border(L, grevlex)
+        assert L_ == [(2, 1), (1, 2), (0, 1)]
 
         L = [(0, 1), (1, 1), (2, 1), (1, 2)]
-        L_ = sorted(BorderBasedUniverse.upper_border(L))
-        assert L_ == [(1, 2), (2, 1)]
+        L_ = BorderBasedUniverse.upper_border(L, grevlex)
+        assert L_ == [(2, 1), (1, 2), (0, 1)]
 
-    @staticmethod
-    def lower_border(L):
-        """
-        Get the lower-border of terms
-        """
-        it = iter(L)
-
-        # Maintain a list of elements on the border.
-        L_ = [next(it)]
-
-        for l in it:
-            # If anything contains something that is strictly less than the
-            # other element in the border, don't keep it.
-            for i in xrange(len(L_)-1, -1, -1):
-                l_ = L_[i]
-                # If this element (l) is subsumed by something in the new
-                # border, remove it.
-                if tuple_subs(l_, l):
-                    del L_[i]
-                # If this element (l) subsumes something in the new
-                # border, remove from the new border
-                elif tuple_subs(l, l_):
-                    break
-            else:
-                # If you've come this far, nothing in the new border
-                # subsumes you, so add.
-                L_.append(l)
-        return L_
-
-    @staticmethod
-    def test_lower_border():
-        """
-        Test simplify border
-        """
-        L = [(2, 1), (1, 1), (0, 1), (1, 2)]
-        L_ = sorted(BorderBasedUniverse.upper_border(L))
-        assert L_ == [(0, 1),]
+        L = [(2, 1), (1, 2), (2, 0), (0, 2),]
+        L_ = BorderBasedUniverse.upper_border(L, grevlex)
+        assert L_ == L
 
     def extend(self, *Vs):
         """
@@ -411,8 +358,7 @@ class BorderBasedUniverse(ComputationalUniverse):
         Find a the supplementary space of V, such that L = B ⊕ V
         The supplementary space is the space.
         """
-        dO = BorderBasedUniverse.lower_border([self.term(lm(v, self._tau))
-            for v in V])
+        dO = set([self.term(lm(v, self._tau)) for v in V])
         # Get everything less than dO
         O = set(chain.from_iterable(dominated_elements(o) for o in dO))
         O.difference_update(dO)
