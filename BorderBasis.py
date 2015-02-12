@@ -14,7 +14,7 @@ from util import *
 from itertools import chain
 
 #from MonomialSpan import MonomialSpan, approximate_unitary
-from ComputationalUniverse import BorderBasedUniverse
+from ComputationalUniverse import BorderBasedUniverse, DegreeBoundedUniverse
 
 class Basis(object):
     """
@@ -124,9 +124,10 @@ class BorderBasisFactory(object):
         """
 
         # Get the computation universe.
-        L = BorderBasedUniverse.from_support(R, support(I))
+        L = DegreeBoundedUniverse.from_support(R, I, tau=self.delta)
         # Get a linear basis for I
         V = L.vector_space(I)
+        _, V = srref(V, self.delta)
         L, V, B = self.__inner_loop(L, V)
 
         # Final reduction

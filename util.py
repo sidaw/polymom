@@ -5,11 +5,23 @@ Various utility methods
 import operator
 from itertools import chain
 from sympy import grevlex
-from numpy import array, zeros, diag
-from numpy.linalg import norm, eig, inv
+from numpy import array, zeros, diag, sqrt
+from numpy.linalg import eig, inv, svd
+import scipy as sc 
+import scipy.sparse
 #import ipdb
 
 eps = 1e-16
+
+def norm(arr):
+    """
+    Compute the sparse norm
+    """
+    if isinstance(arr, sc.sparse.base.spmatrix):
+        return sqrt((arr.data**2).sum())
+    else:
+        return sqrt((arr**2).sum())
+
 
 def tuple_add(t1, t2):
     """Elementwise addition of two tuples"""
@@ -112,11 +124,20 @@ def lt(arr, tau=0):
     """
     Get the leading term of arr > tau
     """
-    _, cols = arr.nonzeros()
-    for idx in cols:
+    if arr.ndim == 1:
+        idxs, = arr.nonzero()
+    elif arr.ndim == 2:
+        assert arr.shape[0] == 1
+        idxs = zip(*arr.nonzero())
+    else:
+        raise Exception("Array of unexpected size: " + arr.ndim)
+    for idx in idxs:
         elem = arr[idx]
         if abs(elem) > tau:
-            return idx, elem
+            if arr.ndim == 1:
+                return idx, elem
+            elif arr.ndim == 2:
+                return idx[1], elem
     return 0, arr[0]
 
 def lm(arr, tau=0):
@@ -136,12 +157,12 @@ def lt_normalize(R):
         R[r,:] /= max(abs(R[r,:]))
     return R
 
-def row_normalize(R, tau = eps, order=None):
+def row_normalize(R, tau = eps):
     """
     Normalize rows to have unit norm
     """
     for r in R:
-        li = norm(r, ord=order)
+        li = norm(r)
         if li < tau:
             r[:] = 0
         else:
@@ -164,14 +185,17 @@ def srref(A, tau = eps):
     """
     Compute the stabilized row reduced echelon form.
     """
+    # TODO: Make sparse compatible
+    if isinstance(A, sc.sparse.base.spmatrix):
+        A = A.todense()
+    A = array(A)
     m, n = A.shape
 
     Q = []
     R = zeros((min(m,n), n)) # Rows
 
-    for i in xrange(n):
+    for i, ai in enumerate(A.T):
         # Remove any contribution from previous rows
-        ai = array(A[:, i]) # Make a copy.
         for j, qj in enumerate(Q):
             R[j, i] = ai.dot(qj)
             ai -= ai.dot(qj) * qj
@@ -181,7 +205,7 @@ def srref(A, tau = eps):
             # Add a new column to Q
             Q.append(ai / li)
             # And write down the contribution
-            R[i, i] = li
+            R[len(Q)-1, i] = li
 
     # Convert to reduced row echelon form
     row_reduce(R, tau)
@@ -207,4 +231,12 @@ def simultaneously_diagonalize(Ms):
         l = diag(Ri.dot(M).dot(R))
         L.append(l)
     return L, R
+
+def truncated_svd(M, epsilon = 1e-16):
+    """
+    Computed the truncated version of M from SVD
+    """
+    U, S, V = svd(M)
+    S = S[abs(S) > epsilon]
+    return U[:, :len(S)], S, V[:len(S),:]
 

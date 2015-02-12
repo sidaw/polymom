@@ -7,10 +7,10 @@ Computational universes
 import numpy as np
 import scipy as sc
 import sympy as sp
-from numpy import array, zeros, atleast_2d, hstack, vstack, diag
-from numpy.linalg import norm, svd, qr
+from numpy import array, zeros, atleast_2d, diag
+from numpy.linalg import svd, qr
 import scipy.sparse
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_matrix, lil_matrix, vstack
 
 from sympy import ring, RR, lex, grlex, grevlex, pprint
 from util import *
@@ -18,16 +18,19 @@ from itertools import chain
 
 import ipdb
 
+eps = 1e-10
+
 class ComputationalUniverse(object):
     """
     Represents a computational universe.
     """
 
-    def __init__(self, R):
+    def __init__(self, R, tau=eps):
         self._ring = R
         self._symbols = [R(x) for x in R.symbols]
         self._nsymbols = len(self._symbols)
         self._order = R.order
+        self._tau = tau
 
     @property
     def symbols(self):
@@ -96,7 +99,7 @@ class ComputationalUniverse(object):
         r"""
         Find a vector space spanning the set of polynomials f.
         """
-        V = array(self.as_vector(f) for f in fs)
+        V = array([self.as_vector(f) for f in fs])
         _, V_ = srref(V)
         return V_
 
@@ -105,21 +108,40 @@ class BorderBasedUniverse(ComputationalUniverse):
     Represents a universe by its border
     """
 
-    def __init__(self, R, border):
-        super(BorderBasedUniverse, self).__init__(R)
+    def __init__(self, R, border, tau=eps):
+        super(BorderBasedUniverse, self).__init__(R, tau)
         self.border = border
         self._max_degrees = reduce(tuple_max, border)
-        self._terms = self.__build_index(self._order)
+        self._terms = self.__build_index()
         self._nterms = len(self._terms)
 
-    def __build_index(self, order):
+    def __build_index(self):
         """
         Build an index of terms
         """
         return sorted(
                 set(chain.from_iterable(dominated_elements(b)
                     for b in self.border)),
-                key=order, reverse=True)
+                key=self._order, reverse=True)
+
+    def as_vector(self, f):
+        cols = [self.index(t) for t in f.monoms()]
+        rows = [0 for _ in cols]
+        nrows, ncols = 1, self._nterms
+        data = [float(v) for v in f.values()]
+        return csr_matrix((data, (rows, cols)), shape=(nrows, ncols))
+
+    def vector_space(self, fs):
+        r"""
+        Find a vector space spanning the set of polynomials f.
+        """
+        data, rows, cols = [], [], []
+        for i, f in enumerate(fs):
+            cols.extend(self.index(t) for t in f.monoms())
+            rows.extend(i for _ in f.monoms())
+            data.extend(float(v) for v in f.values())
+        nrows, ncols = len(fs), self._nterms
+        return csr_matrix((data, (rows, cols)), shape=(nrows, ncols))
 
     def index(self, term):
         """
@@ -138,10 +160,13 @@ class BorderBasedUniverse(ComputationalUniverse):
 
     def contains(self, f):
         # assert type(f) == PolyElement
-        for t, _ in f.terms():
-            if not BorderBasedUniverse.border_contains(self.border, t):
-                return False
-        return True
+        if isinstance(f, sp.polys.rings.PolyElement):
+            for t, _ in f.terms():
+                if not self.contains(t):
+                    return False
+            return True
+        elif isinstance(f, tuple):
+            return BorderBasedUniverse.border_contains(self.border, f)
 
     @staticmethod
     def border_contains(L, t):
@@ -275,15 +300,17 @@ class BorderBasedUniverse(ComputationalUniverse):
         """
         nrows, _ = arr.shape
         ncols_ = new_universe.nterms()
-        rows, cols = arr.nonzeros()
+        rows, cols = arr.nonzero()
         cols_ = [new_universe.index(old_universe.term(i)) for i in cols]
-        return csr_matrix(arr.data, (rows, cols_), shape=(nrows, ncols_))
+        return csr_matrix((arr.data, (rows, cols_)), shape=(nrows, ncols_))
 
     def extend_within(self, V):
         r"""
         Extend the basis $V$ within the universe.
         Essentially, this computes $V⁺ \cap L$
         """
+        _, ncols = V.shape
+
         Wr, Wc = [], []
         data = []
         row_index = 0
@@ -291,64 +318,92 @@ class BorderBasedUniverse(ComputationalUniverse):
             for v in V:
                 _, cols = v.nonzero()
                 try:
-                    w = list(map(self.index,
+                    cols = list(map(self.index,
                         (tuple_incr(t, i) for t in map(self.term, cols))))
 
-                    data.extend(v.data)
-                    Wc.extend(w)
-                    Wr.extend(row_index for _ in w)
+                    # Remove any leading terms present in V (to ensure
+                    # pairwise leading terms)
+                    rows = zeros(len(cols))
+                    w = csr_matrix((v.data, (rows, cols)), shape=(1, ncols))
+                    for v in V:
+                        idx, val = lt(v, self._tau)
+                        if w[0, idx] != 0:
+                            w = w - v * w[0, idx] / val
+
+                    if norm(w) < self._tau:
+                        continue
+
+                    data.extend(w.data)
+                    _, cols = w.nonzero()
+                    Wc.extend(cols)
+                    Wr.extend(row_index for _ in cols)
                     row_index += 1
-                except IndexError:
+                except ValueError:
                     # This term is outside our universe, ignore
                     pass
-        return csr_matrix(data, (Wr, Wc), shape=V.shape)
+        nrows = row_index
+
+        W = csr_matrix((data, (Wr, Wc)), shape=(nrows, ncols))
+        if nrows > 0:
+            # Compute the truncated svd
+            # Stupid thing can't be done on sparse matrices.
+            # Grumble
+            _, _, W = truncated_svd(W.todense(), self._tau)
+            _, W = srref(W, self._tau)
+            W = csr_matrix(W)
+
+        return W
 
     def stable_extension(self, V):
         r"""
         Extend the basis $V$ within the universe till fix point.
         """
         W = self.extend_within(V)
-        if len(W) == 0:
+        if W.shape[0] == 0:
             return V
         else:
-            return self.stable_extension(vstack((V, W)))
+            return self.stable_extension(vstack((V, W), 'csr'))
 
-    def supplementary_space(self, V, tau=0):
+    def supplementary_space(self, V):
         r"""
         Find a the supplementary space of V, such that L = B ⊕ V
         The supplementary space is the space.
         """
-        dO = BorderBasedUniverse.lower_border([self.term(lm(v, tau))
+        dO = BorderBasedUniverse.lower_border([self.term(lm(v, self._tau))
             for v in V])
         # Get everything less than dO
-        O = set(dominated_elements(o) for o in dO)
-        set.difference_update(dO)
+        O = set(chain.from_iterable(dominated_elements(o) for o in dO))
+        O.difference_update(dO)
         return sorted(O, key=self._order, reverse=True)
 
-    def contains_extension(self, v):
+    def contains_extension(self, B):
         r"""
-        Let v be a indicator vector of basis elements $B ⊆ L$.
+        Let $B ⊆ L$.
         This function returns whether or not $B⁺ ⊆ L$.
         """
-        raise NotImplementedError()
+        for t in B:
+            for i in xrange(self._nsymbols):
+                if not self.contains(tuple_incr(t, i)):
+                    return False
+        return True
 
     @staticmethod
-    def from_support(R, I):
+    def from_support(R, I, tau=eps):
         """
         Creates a border basis from the support of a set of polynomials I
         """
         border = BorderBasedUniverse.upper_border(
                 chain.from_iterable(i.monoms() for i in I))
-        return BorderBasedUniverse(R, border)
+        return BorderBasedUniverse(R, border, tau)
 
 class DegreeBoundedUniverse(BorderBasedUniverse):
     """
     Represents a universe by its border
     """
 
-    def __init__(self, R, max_degree):
+    def __init__(self, R, max_degree, tau=eps):
         border = [tuple(max_degree for _ in R.symbols)]
-        super(DegreeBoundedUniverse, self).__init__(R, border)
+        super(DegreeBoundedUniverse, self).__init__(R, border, tau)
         self._max_degree = max_degree
 
     def index(self, term):
@@ -391,10 +446,10 @@ class DegreeBoundedUniverse(BorderBasedUniverse):
             return super(DegreeBoundedUniverse, self).term(idx)
 
     @staticmethod
-    def from_support(R, I):
+    def from_support(R, I, tau=eps):
         """
         Get the largest degree of terms in I
         """
-        max_degree = max(max(i.monoms()) for i in I)
-        return DegreeBoundedUniverse(R, max_degree)
+        max_degree = max(max(map(max, i.monoms())) for i in I)
+        return DegreeBoundedUniverse(R, max_degree, tau)
 

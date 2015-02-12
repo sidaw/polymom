@@ -266,14 +266,6 @@ def test_approx_unitary_basis():
     print V
     print V_
 
-def truncated_svd(M, epsilon = 0.001):
-    """
-    Computed the truncated version of M from SVD
-    """
-    U, S, V = svd(M)
-    S = S[abs(S) > epsilon]
-    return U[:, :len(S)], S, V[:len(S),:]
-
 def expand_order_ideal(L, B, W):
     """
     Expand the order ideal until it contains B
