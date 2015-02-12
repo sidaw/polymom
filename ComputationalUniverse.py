@@ -5,11 +5,14 @@ Computational universes
 """
 
 import numpy as np
+import scipy as sc
 import sympy as sp
 from numpy import array, zeros, atleast_2d, hstack, vstack, diag
 from numpy.linalg import norm, svd, qr
+import scipy.sparse
+from scipy.sparse import csr_matrix, lil_matrix
 
-from sympy import ring, RR, lex, grevlex, pprint
+from sympy import ring, RR, lex, grlex, grevlex, pprint
 from util import *
 from itertools import chain
 
@@ -24,6 +27,7 @@ class ComputationalUniverse(object):
         self._ring = R
         self._symbols = [R(x) for x in R.symbols]
         self._nsymbols = len(self._symbols)
+        self._order = R.order
 
     @property
     def symbols(self):
@@ -36,6 +40,31 @@ class ComputationalUniverse(object):
     def max_degrees(self):
         """
         Get the maximum degree of the symbol in the universe
+        """
+        raise NotImplementedError()
+
+    @property
+    def nterms(self):
+        """
+        How big is this universe?
+        """
+        raise NotImplementedError()
+
+    def index(self, term):
+        """
+        Get numeric index for the term.
+        Note that the convention is that the "largest term gets index
+        0".
+        e.g. (d,d,d) -> 0
+        """
+        raise NotImplementedError()
+
+    def term(self, idx):
+        """
+        Get term for the numeric index
+        Note that the convention is that the "largest term gets index
+        0".
+        e.g. 0 -> (d,d,d)
         """
         raise NotImplementedError()
 
@@ -74,12 +103,35 @@ class ComputationalUniverse(object):
 class BorderBasedUniverse(ComputationalUniverse):
     """
     Represents a universe by its border
-    """ 
+    """
 
     def __init__(self, R, border):
         super(BorderBasedUniverse, self).__init__(R)
         self.border = border
         self._max_degrees = reduce(tuple_max, border)
+        self._terms = self.__build_index(self._order)
+        self._nterms = len(self._terms)
+
+    def __build_index(self, order):
+        """
+        Build an index of terms
+        """
+        return sorted(
+                set(chain.from_iterable(dominated_elements(b)
+                    for b in self.border)),
+                key=order, reverse=True)
+
+    def index(self, term):
+        """
+        Get numeric index for the term
+        """
+        return self._terms.index(term)
+
+    def term(self, idx):
+        """
+        Get numeric index for the term
+        """
+        return self._terms[idx]
 
     def max_degrees(self):
         return self._max_degrees
@@ -97,7 +149,8 @@ class BorderBasedUniverse(ComputationalUniverse):
         Does the border contain this term?
         """
         for b in L:
-            if tuple_subs(b, t): return True
+            if tuple_subs(b, t):
+                return True
         return False
 
     @staticmethod
@@ -105,14 +158,14 @@ class BorderBasedUniverse(ComputationalUniverse):
         """
         Test border contains
         """
-        L = [(2,1), (1,2)]
-        assert BorderBasedUniverse.border_contains(L, (1,2))
-        assert BorderBasedUniverse.border_contains(L, (1,1))
-        assert BorderBasedUniverse.border_contains(L, (0,1))
-        assert not BorderBasedUniverse.border_contains(L, (2,2))
+        L = [(2, 1), (1, 2)]
+        assert BorderBasedUniverse.border_contains(L, (1, 2))
+        assert BorderBasedUniverse.border_contains(L, (1, 1))
+        assert BorderBasedUniverse.border_contains(L, (0, 1))
+        assert not BorderBasedUniverse.border_contains(L, (2, 2))
 
     @staticmethod
-    def simplify_border(L):
+    def upper_border(L):
         """
         Simplify a collection of elements so that it just contains the
         border.
@@ -125,13 +178,16 @@ class BorderBasedUniverse(ComputationalUniverse):
         for l in it:
             # If anything contains something that is strictly less than the
             # other element in the border, don't keep it.
-            for l_ in iter(L_):
+            for i in xrange(len(L_)-1, -1, -1):
+                l_ = L_[i]
                 # If this element (l) is subsumed by something in the new
                 # border, ignore it.
-                if tuple_subs(l_, l): break
+                if tuple_subs(l_, l):
+                    break
                 # If this element (l) subsumes something in the new
                 # border, remove from the new border
-                elif tuple_subs(l, l_): del L_[L_.index(l_)]
+                elif tuple_subs(l, l_):
+                    del L_[i]
             else:
                 # If you've come this far, nothing in the new border
                 # subsumes you, so add.
@@ -139,29 +195,68 @@ class BorderBasedUniverse(ComputationalUniverse):
         return L_
 
     @staticmethod
-    def test_simplify_border():
+    def test_upper_border():
         """
         Test simplify border
         """
-        L = [(2,1), (1,1), (0,1), (1,2)]
-        L_ = sorted(BorderBasedUniverse.simplify_border(L))
-        assert L_ == [(1,2), (2,1)]
+        L = [(2, 1), (1, 1), (0, 1), (1, 2)]
+        L_ = sorted(BorderBasedUniverse.upper_border(L))
+        assert L_ == [(1, 2), (2, 1)]
 
-        L = [(0,1), (1,1), (2,1), (1,2)]
-        L_ = sorted(BorderBasedUniverse.simplify_border(L))
-        assert L_ == [(1,2), (2,1)]
+        L = [(0, 1), (1, 1), (2, 1), (1, 2)]
+        L_ = sorted(BorderBasedUniverse.upper_border(L))
+        assert L_ == [(1, 2), (2, 1)]
 
+    @staticmethod
+    def lower_border(L):
+        """
+        Get the lower-border of terms
+        """
+        it = iter(L)
+
+        # Maintain a list of elements on the border.
+        L_ = [next(it)]
+
+        for l in it:
+            # If anything contains something that is strictly less than the
+            # other element in the border, don't keep it.
+            for i in xrange(len(L_)-1, -1, -1):
+                l_ = L_[i]
+                # If this element (l) is subsumed by something in the new
+                # border, remove it.
+                if tuple_subs(l_, l):
+                    del L_[i]
+                # If this element (l) subsumes something in the new
+                # border, remove from the new border
+                elif tuple_subs(l, l_):
+                    break
+            else:
+                # If you've come this far, nothing in the new border
+                # subsumes you, so add.
+                L_.append(l)
+        return L_
+
+    @staticmethod
+    def test_lower_border():
+        """
+        Test simplify border
+        """
+        L = [(2, 1), (1, 1), (0, 1), (1, 2)]
+        L_ = sorted(BorderBasedUniverse.upper_border(L))
+        assert L_ == [(0, 1),]
 
     def extend(self, *Vs):
         """
         Extend the border by one
         Appropriately updates the indices of each of the matrices V
         """
-        border = BorderBasedUniverse.simplify_border(self.border +
+        border = BorderBasedUniverse.upper_border(self.border +
                 list(chain.from_iterable([tuple_incr(b, x) for b in self.border]
                     for x in xrange(self._nsymbols))))
-        # TODO: Update Vs
-        return (BorderBasedUniverse(self._ring, border),) + Vs
+        L = BorderBasedUniverse(self._ring, border)
+        Vs = tuple(BorderBasedUniverse.update_vector(self, L, V) for V in Vs)
+
+        return (L,) + Vs
 
     @staticmethod
     def test_extend():
@@ -169,16 +264,44 @@ class BorderBasedUniverse(ComputationalUniverse):
         Test extension
         """
         R = ring('x,y', RR)[0]
-        L = BorderBasedUniverse(R, [(2,1), (1,2)])
+        L = BorderBasedUniverse(R, [(2, 1), (1, 2)])
         L.extend()
-        assert L.border == [(3,1), (2,2), (1,3)]
+        assert L.border == [(3, 1), (2, 2), (1, 3)]
+
+    @staticmethod
+    def update_vector(old_universe, new_universe, arr):
+        """
+        Update arr to be in the new universe
+        """
+        nrows, _ = arr.shape
+        ncols_ = new_universe.nterms()
+        rows, cols = arr.nonzeros()
+        cols_ = [new_universe.index(old_universe.term(i)) for i in cols]
+        return csr_matrix(arr.data, (rows, cols_), shape=(nrows, ncols_))
 
     def extend_within(self, V):
         r"""
         Extend the basis $V$ within the universe.
-        Essentially, this computes $V^+ \cap L$
+        Essentially, this computes $V⁺ \cap L$
         """
-        raise NotImplementedError()
+        Wr, Wc = [], []
+        data = []
+        row_index = 0
+        for i in xrange(self._nsymbols):
+            for v in V:
+                _, cols = v.nonzero()
+                try:
+                    w = list(map(self.index,
+                        (tuple_incr(t, i) for t in map(self.term, cols))))
+
+                    data.extend(v.data)
+                    Wc.extend(w)
+                    Wr.extend(row_index for _ in w)
+                    row_index += 1
+                except IndexError:
+                    # This term is outside our universe, ignore
+                    pass
+        return csr_matrix(data, (Wr, Wc), shape=V.shape)
 
     def stable_extension(self, V):
         r"""
@@ -188,28 +311,90 @@ class BorderBasedUniverse(ComputationalUniverse):
         if len(W) == 0:
             return V
         else:
-            return self.stable_extension(vstack((V,W)))
+            return self.stable_extension(vstack((V, W)))
 
-        raise NotImplementedError()
-
-    def supplementary_space(self, V):
+    def supplementary_space(self, V, tau=0):
         r"""
         Find a the supplementary space of V, such that L = B ⊕ V
+        The supplementary space is the space.
         """
-        raise NotImplementedError()
+        dO = BorderBasedUniverse.lower_border([self.term(lm(v, tau))
+            for v in V])
+        # Get everything less than dO
+        O = set(dominated_elements(o) for o in dO)
+        set.difference_update(dO)
+        return sorted(O, key=self._order, reverse=True)
 
     def contains_extension(self, v):
         r"""
-        Let v be a indicator vector of basis elements $B ⊆ L$. 
+        Let v be a indicator vector of basis elements $B ⊆ L$.
         This function returns whether or not $B⁺ ⊆ L$.
         """
         raise NotImplementedError()
 
     @staticmethod
-    def from_support(I):
+    def from_support(R, I):
         """
         Creates a border basis from the support of a set of polynomials I
         """
+        border = BorderBasedUniverse.upper_border(
+                chain.from_iterable(i.monoms() for i in I))
+        return BorderBasedUniverse(R, border)
 
-        raise NotImplementedError()
+class DegreeBoundedUniverse(BorderBasedUniverse):
+    """
+    Represents a universe by its border
+    """
+
+    def __init__(self, R, max_degree):
+        border = [tuple(max_degree for _ in R.symbols)]
+        super(DegreeBoundedUniverse, self).__init__(R, border)
+        self._max_degree = max_degree
+
+    def index(self, term):
+        """
+        Get numeric index for the term.
+        Note that the convention is that the "largest term gets index
+        0".
+        e.g. (d,d,d) -> 0
+        """
+        d, n = self._max_degree, self._nsymbols
+
+        if self._order == lex:
+            d_ = d+1
+            # The index is simply max degree multiples.
+            idx = 0
+            for i, t in enumerate(reversed(term)):
+                idx += (d_**i) * t
+            return d_**n - 1 - idx
+        else:
+            return super(DegreeBoundedUniverse, self).index(term)
+
+    def term(self, idx):
+        """
+        Get term for the numeric index
+        Note that the convention is that the "largest term gets index
+        0".
+        e.g. 0 -> (d,d,d)
+        """
+        d, n = self._max_degree, self._nsymbols
+
+        if self._order == lex:
+            d_ = d+1
+            idx = d_**n - idx - 1
+            # The index is simply max degree multiples.
+            term = [0 for _ in self._symbols]
+            for i in xrange(self._nsymbols-1, -1, -1):
+                term[i], idx = idx % d_, idx // d_
+            return tuple(term)
+        else:
+            return super(DegreeBoundedUniverse, self).term(idx)
+
+    @staticmethod
+    def from_support(R, I):
+        """
+        Get the largest degree of terms in I
+        """
+        max_degree = max(max(i.monoms()) for i in I)
+        return DegreeBoundedUniverse(R, max_degree)
 

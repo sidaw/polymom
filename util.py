@@ -69,29 +69,6 @@ def to_syms(R, *monoms):
                 for (i, j) in enumerate(monom))
                     for monom in monoms]
 
-#def dominated_elements(lst, idx = 0):
-#    """
-#    Iterates over all elements that are dominated by the input list.
-#    For example, (2,1) returns [(2,1), (2,0), (1,1), (1,0), (0,0), (0,1)]
-#    TODO: buggy
-#    """
-#
-#    # Stupid check
-#    if type(lst) != list: lst = list(lst)
-#
-#    # Yield (a copy of) this element
-#    yield tuple(lst)
-#
-#    if idx < len(lst):
-#        # Update all subsequent indices
-#        tmp = lst[idx]
-#
-#        # Ticker down this index
-#        while lst[idx] >= 0:
-#            for elem in dominated_elements(lst, idx+1): yield elem
-#            lst[idx] -= 1
-#        lst[idx] = tmp
-
 def dominated_elements(lst, idx = 0):
     """
     Iterates over all elements that are dominated by the input list.
@@ -131,22 +108,24 @@ def order_ideal(fs, order=grevlex):
             O.update(dominated_elements(list(t)))
     return sorted(O, key=grevlex, reverse=True)
 
-def lt(arr, tau = 0):
+def lt(arr, tau=0):
     """
     Get the leading term of arr > tau
     """
-    for idx, elem in enumerate(arr):
+    _, cols = arr.nonzeros()
+    for idx in cols:
+        elem = arr[idx]
         if abs(elem) > tau:
             return idx, elem
     return 0, arr[0]
 
-def lm(arr):
+def lm(arr, tau=0):
     """Returns leading monomial"""
-    return lt(arr)[0]
+    return lt(arr, tau)[0]
 
-def lc(arr):
+def lc(arr, tau=0):
     """Returns leading coefficient"""
-    return lt(arr)[1]
+    return lt(arr, tau)[1]
 
 def lt_normalize(R):
     """
