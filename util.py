@@ -31,6 +31,15 @@ def tuple_incr(t1, idx, val=1):
     """Return a tuple with the index idx incremented by val"""
     return t1[:idx] + (t1[idx]+val,) + t1[idx+1:]
 
+def tuple_subs(t1, t2):
+    """
+    Does t1_i >= t2_i for all i? 
+    """
+    for idx in xrange(len(t1)):
+        if t1[idx] < t2[idx]:
+            return False
+    return True
+
 def nonzeros(lst):
     """Return non-zero indices of a list"""
     return (i for i in xrange(len(lst)) if lst[i] > 0)
@@ -203,7 +212,7 @@ def srref(A, tau = eps):
 
     return array(Q).T, R
 
-def simultaneous_diagonalize(Ms):
+def simultaneously_diagonalize(Ms):
     """
     Simultaneously diagonalize a set of matrices.
     * Currently uses a crappy "diagonalize one and use for the rest"
@@ -218,5 +227,5 @@ def simultaneous_diagonalize(Ms):
     for M in it:
         l = diag(Ri.dot(M).dot(R))
         L.append(l)
-    return zip(*L)
+    return L, R
 
