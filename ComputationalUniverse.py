@@ -164,10 +164,11 @@ class BorderBasedUniverse(ComputationalUniverse):
                 key=self._order, reverse=True)
 
     def as_vector(self, f):
-        cols = [self.index(t) for t in f.monoms()]
-        rows = [0 for _ in cols]
+        n = len(f.monoms())
+        rows, cols, data = zeros(n), zeros(n), zeros(n)
+        for i, (t, c) in enumerate(f.terms()):
+            cols[i], data[i] = self.index(t), float(c)
         nrows, ncols = 1, self._nterms
-        data = [float(v) for v in f.values()]
         return csr_matrix((data, (rows, cols)), shape=(nrows, ncols))
 
     def as_poly(self, v):
@@ -185,13 +186,7 @@ class BorderBasedUniverse(ComputationalUniverse):
         r"""
         Find a vector space spanning the set of polynomials f.
         """
-        data, rows, cols = [], [], []
-        for i, f in enumerate(fs):
-            cols.extend(self.index(t) for t in f.monoms())
-            rows.extend(i for _ in f.monoms())
-            data.extend(float(v) for v in f.values())
-        nrows, ncols = len(fs), self._nterms
-        return csr_matrix((data, (rows, cols)), shape=(nrows, ncols))
+        return sc.sparse.vstack((self.as_vector(f) for f in fs), 'csr')
 
     def index(self, term):
         """
@@ -330,10 +325,10 @@ class BorderBasedUniverse(ComputationalUniverse):
                     # pairwise leading terms)
                     rows = zeros(len(cols))
                     w = csr_matrix((v.data, (rows, cols)), shape=(1, ncols))
-                    for v in V:
-                        idx, val = lt(v, tau)
+                    for v_ in V:
+                        idx, val = lt(v_, tau)
                         if w[0, idx] != 0:
-                            w = w - v * w[0, idx] / val
+                            w = w - v_ * w[0, idx] / val
 
                     if norm(w) < self._tau:
                         continue
@@ -349,7 +344,6 @@ class BorderBasedUniverse(ComputationalUniverse):
         nrows = row_index
 
         W = csr_matrix((data, (Wr, Wc)), shape=(nrows, ncols))
-        ipdb.set_trace()
         if nrows > 0:
             # Compute the truncated svd
             # Stupid thing can't be done on sparse matrices.

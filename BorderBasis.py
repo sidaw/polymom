@@ -200,7 +200,7 @@ class BorderBasisFactory(object):
         supplementary space, terminate if $B⁺ ⊆ L$, otherwise, recurse
         with $L⁺$.
         """
-        ipdb.set_trace()
+        #ipdb.set_trace()
         # Get the stable extension
         tau = min(self.delta, self.__compute_tau(V))
         V = L.stable_extension(V, tau)
