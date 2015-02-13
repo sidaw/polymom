@@ -48,9 +48,9 @@ class Basis(object):
 
         raise NotImplementedError()
 
-    def quotient(self, f):
+    def mod(self, f):
         """
-        Find the quotient of f mod I.
+        Find f mod I.
         """
 
         raise NotImplementedError()
@@ -59,8 +59,16 @@ class Basis(object):
         """
         Return the characteristic multiplication matrix of f.
         """
-        return self.L.vector_space([self.quotient(f * b)
-            for b in self.quotient_basis()])
+        Q = self.quotient_basis()
+        Qi = [q.monoms()[0] for q in Q]
+        d = len(Q)
+        V = np.zeros((d,d))
+        for i, q in enumerate(Q):
+            r = self.mod(f*q)
+            for t, c in r.terms():
+                j = Qi.index(t)
+                V[i,j] = c
+        return V    
 
     def formal_multiplication_matrices(self):
         """
@@ -87,6 +95,8 @@ class BorderBasis(Basis):
         self.O = O
         self.dO = L.border(O)
         self.V = V
+        self._quotient_basis = [L.monom(o) for o in O]
+        self.Q = BorderBasedUniverse(L.ring, O)
 
     def find_basis_nearest_lt(self, t):
         """
@@ -111,9 +121,12 @@ class BorderBasis(Basis):
         idx = self.dO.index(t)
         return self._generators[idx]
 
-    def quotient(self, f):
+    def quotient_basis(self):
+        return self._quotient_basis
+
+    def mod(self, f):
         """
-        Compute the quotient
+        Compute the mod
         """
         while True:
             if f.LM in self.O:
@@ -122,6 +135,25 @@ class BorderBasis(Basis):
                 # Find the nearest element on the border, and eliminate
                 b = self.find_basis_nearest_lt(f.LM)
                 f -= f.LC/b.LC * self.L.monom(tuple_diff(f.LM, b.LM)) * b
+
+    def formal_multiplication_matrices(self):
+        """
+        With border bases, we know that the formal multiplication
+        matrices essentially only invoke terms on the border, so we can
+        compute this super efficiently.
+        """
+        d = len(self.O)
+        Vs = [np.zeros((d,d)) for _ in xrange(self.L.nsymbols)]
+        for i, V in enumerate(Vs):
+            for j, b in enumerate(self.O):
+                t = tuple_incr(b, i)
+                if t in self.O:
+                    V[j, self.Q.index(t)] = 1
+                else:
+                    b_ = self.find_basis_with_lt(t)
+                    for t, c in b_.terms()[1:]:
+                        V[j, self.Q.index(t)] = -c
+        return Vs
 
 class BorderBasisFactory(object):
     """
@@ -158,7 +190,6 @@ class BorderBasisFactory(object):
         supplementary space, terminate if $B⁺ ⊆ L$, otherwise, recurse
         with $L⁺$.
         """
-        ipdb.set_trace()
         # Get the stable extension
         V = L.stable_extension(V)
 

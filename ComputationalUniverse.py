@@ -33,11 +33,25 @@ class ComputationalUniverse(object):
         self._tau = tau
 
     @property
+    def ring(self):
+        """
+        Get the ring
+        """
+        return self._ring
+
+    @property
     def symbols(self):
         """
         Get the symbols of this computational universe
         """
         return self._symbols
+
+    @property
+    def nsymbols(self):
+        """
+        Get the number of symbols of this computational universe
+        """
+        return self._nsymbols
 
     @property
     def max_degrees(self):
