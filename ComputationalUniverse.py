@@ -163,6 +163,13 @@ class BorderBasedUniverse(ComputationalUniverse):
                     for b in self._border)),
                 key=self._order, reverse=True)
 
+    @property
+    def nterms(self):
+        """
+        How big is this universe?
+        """
+        return self._nterms
+
     def as_vector(self, f):
         n = len(f.monoms())
         rows, cols, data = zeros(n), zeros(n), zeros(n)
@@ -294,7 +301,7 @@ class BorderBasedUniverse(ComputationalUniverse):
         Update arr to be in the new universe
         """
         nrows, _ = arr.shape
-        ncols_ = new_universe.nterms()
+        ncols_ = new_universe.nterms
         rows, cols = arr.nonzero()
         cols_ = [new_universe.index(old_universe.term(i)) for i in cols]
         return csr_matrix((arr.data, (rows, cols_)), shape=(nrows, ncols_))

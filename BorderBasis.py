@@ -209,7 +209,8 @@ class BorderBasisFactory(object):
         # Check if we've reached fixed point.
         if not L.contains_extension(B):
             # TODO: An optimization is to extend L by the terms in B.
-            return self.__inner_loop(L.extend(), V)
+            L, V = L.extend(V)
+            return self.__inner_loop(L, V)
         else:
             return L, V, B
 
