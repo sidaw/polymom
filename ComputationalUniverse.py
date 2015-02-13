@@ -127,7 +127,7 @@ class ComputationalUniverse(object):
         Find a vector space spanning the set of polynomials f.
         """
         V = array([self.as_vector(f) for f in fs])
-        _, V_ = srref(V)
+        _, V_ = srref(V, self._tau)
         return V_
 
     def as_poly(self, v):
@@ -304,11 +304,13 @@ class BorderBasedUniverse(ComputationalUniverse):
         cols_ = [new_universe.index(old_universe.term(i)) for i in cols]
         return csr_matrix((arr.data, (rows, cols_)), shape=(nrows, ncols_))
 
-    def extend_within(self, V):
+    def extend_within(self, V, tau=None):
         r"""
         Extend the basis $V$ within the universe.
         Essentially, this computes $V⁺ \cap L$
         """
+        if tau is None: tau = self._tau
+
         _, ncols = V.shape
 
         Wr, Wc = [], []
@@ -329,7 +331,7 @@ class BorderBasedUniverse(ComputationalUniverse):
                     rows = zeros(len(cols))
                     w = csr_matrix((v.data, (rows, cols)), shape=(1, ncols))
                     for v in V:
-                        idx, val = lt(v, self._tau)
+                        idx, val = lt(v, tau)
                         if w[0, idx] != 0:
                             w = w - v * w[0, idx] / val
 
@@ -347,6 +349,7 @@ class BorderBasedUniverse(ComputationalUniverse):
         nrows = row_index
 
         W = csr_matrix((data, (Wr, Wc)), shape=(nrows, ncols))
+        ipdb.set_trace()
         if nrows > 0:
             # Compute the truncated svd
             # Stupid thing can't be done on sparse matrices.
@@ -357,15 +360,17 @@ class BorderBasedUniverse(ComputationalUniverse):
 
         return W
 
-    def stable_extension(self, V):
+    def stable_extension(self, V, tau=None):
         r"""
         Extend the basis $V$ within the universe till fix point.
         """
-        W = self.extend_within(V)
+        if tau is None: tau = self._tau
+
+        W = self.extend_within(V, tau)
         if W.shape[0] == 0:
             return V
         else:
-            return self.stable_extension(vstack((V, W), 'csr'))
+            return self.stable_extension(vstack((V, W), 'csr'), tau)
 
     def supplementary_space(self, V):
         r"""

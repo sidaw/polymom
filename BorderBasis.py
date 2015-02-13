@@ -184,14 +184,26 @@ class BorderBasisFactory(object):
         V = lt_normalize(V)
         return O, V
 
+    def __compute_tau(self, V):
+        r, s = V.shape
+        c = max((v.max()/lc(v, self.delta) for v in abs(V)))
+
+        tau = 1./np.sqrt(r + (s - r) * r**2 * c **2)
+        print "tau", tau
+        assert tau > eps
+
+        return tau
+
     def __inner_loop(self, L, V):
         """
         Inner loop: Find the L-stable span of V. If B be the
         supplementary space, terminate if $B⁺ ⊆ L$, otherwise, recurse
         with $L⁺$.
         """
+        ipdb.set_trace()
         # Get the stable extension
-        V = L.stable_extension(V)
+        tau = min(self.delta, self.__compute_tau(V))
+        V = L.stable_extension(V, tau)
 
         B = L.supplementary_space(V) 
         # Check if we've reached fixed point.

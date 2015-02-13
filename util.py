@@ -2,16 +2,17 @@
 """
 Various utility methods
 """
+import numpy as np
+import scipy as sc 
 import operator
 from itertools import chain
 from sympy import grevlex
 from numpy import array, zeros, diag, sqrt
 from numpy.linalg import eig, inv, svd
-import scipy as sc 
 import scipy.sparse
 import ipdb
 
-eps = 1e-16
+eps = 1e-15
 
 def norm(arr):
     """
@@ -185,7 +186,7 @@ def row_reduce(R, tau = eps):
 
     return R
 
-def srref(A, tau = eps):
+def srref(A, tau=eps):
     """
     Compute the stabilized row reduced echelon form.
     """
@@ -219,6 +220,18 @@ def srref(A, tau = eps):
 
     return array(Q).T, R
 
+def test_srref():
+    W = np.matrix([[  0.000e+00,   0.000e+00],
+        [  0.000e+00,   0.000e+00],
+        [  0.000e+00,   0.000e+00],
+        [  5.020e-17,   1.180e-16],
+        [ -4.908e-01,   6.525e-01],
+        [ -8.105e-01,  -9.878e-02],
+        [  0.000e+00,   0.000e+00],
+        [  0.000e+00,   0.000e+00],
+        [  3.197e-01,   7.513e-01]]).T
+    return srref(W)
+
 def simultaneously_diagonalize(Ms):
     """
     Simultaneously diagonalize a set of matrices.
@@ -236,7 +249,7 @@ def simultaneously_diagonalize(Ms):
         L.append(l)
     return L, R
 
-def truncated_svd(M, epsilon = 1e-16):
+def truncated_svd(M, epsilon=eps):
     """
     Computed the truncated version of M from SVD
     """
