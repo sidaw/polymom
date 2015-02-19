@@ -180,9 +180,12 @@ def row_reduce(R, tau = eps):
     """
     nrows, _ = R.shape
     for i in xrange(nrows-1, 0, -1):
-        k, _ = lt(R[i,:], tau)
-        for j in xrange(i):
-            R[j, :] -= R[i,:] * R[j,k] / R[i,k]
+        k, v = lt(R[i,:], tau)
+        if v > tau:
+            for j in xrange(i):
+                R[j, :] -= R[i,:] * R[j,k] / R[i,k]
+        else:
+            R[i, :] = 0
 
     return R
 

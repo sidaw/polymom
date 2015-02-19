@@ -186,7 +186,7 @@ class BorderBasisFactory(object):
 
     def __compute_tau(self, V):
         r, s = V.shape
-        c = max((v.max()/lc(v, self.delta) for v in abs(V)))
+        c = max((v.max()/lc(v, self.delta) for v in abs(V) if norm(v) > eps))
 
         tau = 1./np.sqrt(r + (s - r) * r**2 * c **2)
         print "tau", tau
@@ -219,6 +219,7 @@ class BorderBasisFactory(object):
         Return a border basis for fs.
         """
 
+        #ipdb.set_trace()
         # Get the computation universe.
         L = DegreeBoundedUniverse.from_support(R, I, tau=self.delta)
         # Get a linear basis for I
