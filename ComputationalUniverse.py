@@ -32,6 +32,12 @@ class ComputationalUniverse(object):
         self._order = R.order
         self._tau = tau
 
+    def __repr__(self):
+        return "[Universe of %d terms in %s]"% (self.nterms, self.symbols)
+
+    def __len__(self):
+        return self.nterms
+
     @property
     def ring(self):
         """
@@ -154,6 +160,9 @@ class BorderBasedUniverse(ComputationalUniverse):
         self._terms = self.__build_index()
         self._nterms = len(self._terms)
 
+    def __repr__(self):
+        return "[Border universe of %d terms in %s, border: %s]"% (self.nterms, self.symbols, self._border)
+
     def __build_index(self):
         """
         Build an index of terms
@@ -272,6 +281,43 @@ class BorderBasedUniverse(ComputationalUniverse):
         L_ = BorderBasedUniverse.upper_border(L, grevlex)
         assert L_ == L
 
+    @staticmethod
+    def lower_border(L, order=grevlex):
+        """
+        Simplify a collection of elements so that it just contains the
+        border.
+        """
+        L = sorted(L, key=order)
+        i = 0
+        while i < len(L):
+            l = L[i]
+            j = i
+            while j < len(L):
+                l_ = L[j]
+                if l != l_ and tuple_subs(l_, l):
+                    del L[j]
+                else:
+                    j += 1
+            i += 1
+        return list(reversed(L))
+
+    @staticmethod
+    def test_lower_border():
+        """
+        Test simplify border
+        """
+        L = [(2, 1), (1, 1), (0, 1), (1, 2)]
+        L_ = BorderBasedUniverse.lower_border(L, grevlex)
+        assert L_ == [(2, 1), (1, 2), (0, 1)]
+
+        L = [(0, 1), (1, 1), (2, 1), (1, 2)]
+        L_ = BorderBasedUniverse.lower_border(L, grevlex)
+        assert L_ == [(2, 1), (1, 2), (0, 1)]
+
+        L = [(2, 1), (1, 2), (2, 0), (0, 2),]
+        L_ = BorderBasedUniverse.lower_border(L, grevlex)
+        assert L_ == L
+
     def extend(self, *Vs):
         """
         Extend the border by one
@@ -379,6 +425,7 @@ class BorderBasedUniverse(ComputationalUniverse):
         The supplementary space is the space.
         """
         dO = set([self.term(lm(v, self._tau)) for v in V])
+        dO = BorderBasedUniverse.lower_border(dO)
         # Get everything less than dO
         O = set(chain.from_iterable(dominated_elements(o) for o in dO))
         O.difference_update(dO)

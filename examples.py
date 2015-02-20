@@ -115,7 +115,10 @@ class BernoulliMixture(Model):
         """
         # Row normalize
         params = abs(np.random.rand(d,k))
-        params = row_normalize(params.T, 1).T
+        print params
+        for col in params.T:
+            col /= sum(col)
+        print params
 
         return BernoulliMixture.Instance(self, params)
 

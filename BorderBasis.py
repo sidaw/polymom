@@ -142,7 +142,7 @@ class BorderBasis(Basis):
         matrices essentially only invoke terms on the border, so we can
         compute this super efficiently.
         """
-        d = len(self.O)
+        d = len(self.Q)
         Vs = [np.zeros((d,d)) for _ in xrange(self.L.nsymbols)]
         for i, V in enumerate(Vs):
             for j, b in enumerate(self.O):

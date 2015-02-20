@@ -11,6 +11,8 @@ from numpy import array, zeros, diag, sqrt
 from numpy.linalg import eig, inv, svd
 import scipy.sparse
 import ipdb
+from munkres import Munkres
+import sys
 
 eps = 1e-15
 
@@ -259,4 +261,57 @@ def truncated_svd(M, epsilon=eps):
     U, S, V = svd(M)
     S = S[abs(S) > epsilon]
     return U[:, :len(S)], S, V[:len(S),:]
+
+def closest_permuted_vector( a, b ):
+    """Find a permutation of b that matches a most closely (i.e. min |A
+    - B|_2)"""
+
+    # The elements of a and b form a weighted bipartite graph. We need
+    # to find their minimal matching.
+    assert( a.shape == b.shape )
+    n, = a.shape
+
+    W = sc.zeros( (n, n) )
+    for i in xrange( n ):
+        for j in xrange( n ):
+            W[i, j] = (a[i] - b[j])**2
+
+    m = Munkres()
+    matching = m.compute( W )
+    matching.sort()
+    _, bi = zip(*matching)
+    return b[array(bi)]
+
+def closest_permuted_matrix( A, B ):
+    """Find a _row_ permutation of B that matches A most closely (i.e. min |A
+    - B|_F)"""
+
+    # The rows of A and B form a weighted bipartite graph. The weights
+    # are computed using the vector_matching algorithm.
+    # We need to find their minimal matching.
+    assert( A.shape == B.shape )
+
+    n, _ = A.shape
+    m = Munkres()
+
+    # Create the weight matrix
+    W = sc.zeros( (n, n) )
+    for i in xrange( n ):
+        for j in xrange( n ):
+            # Best matching between A and B
+            W[i, j] = norm(A[i] - B[j])
+        
+    matching = m.compute( W )
+    matching.sort()
+    _, rowp = zip(*matching)
+    rowp = array( rowp )
+    # Permute the rows of B according to Bi
+    B_ = B[ rowp ]
+
+    return B_
+
+def save_example(R, I, out=sys.stdout):
+    out.write(",".join(map(str, R.symbols)) +"\n")
+    for i in I:
+        out.write(str(i) + "\n")
 
