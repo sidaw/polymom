@@ -11,7 +11,7 @@ from numpy import array, zeros, diag, sqrt
 from numpy.linalg import eig, inv, svd
 import scipy.sparse
 import ipdb
-from munkres import Munkres
+#from munkres import Munkres
 import sys
 
 eps = 1e-15
@@ -88,6 +88,33 @@ def to_syms(R, *monoms):
     return [prod(R(R.symbols[i])**j
                 for (i, j) in enumerate(monom))
                     for monom in monoms]
+
+def smaller_elements_(lst, idx = 0, order=grevlex):
+    """
+    Returns all elements smaller than the item in lst
+    """
+    assert order == grevlex
+    if not isinstance(lst, list): lst = list(lst)
+    if idx == 0: yield tuple(lst)
+    if idx == len(lst)-1:
+        yield tuple(lst)
+        return
+
+    tmp, tmp_ = lst[idx], lst[idx+1]
+    while lst[idx] > 0:
+        lst[idx] -= 1
+        lst[idx+1] += 1
+        for elem in smaller_elements_(lst, idx+1, order): yield elem
+    lst[idx], lst[idx+1] = tmp, tmp_
+
+def smaller_elements(lst, grade=None, idx = 0, order=grevlex):
+    if not isinstance(lst, list): lst = list(lst)
+    while True:
+        for elem in smaller_elements_(lst, 0, order): yield elem
+        # Remove one from the largest element
+        for i in xrange(len(lst)-1, -1, -1):
+            if lst[i] > 0: lst[i] -= 1; break
+        else: break
 
 def dominated_elements(lst, idx = 0):
     """

@@ -240,6 +240,16 @@ class BorderBasedUniverse(ComputationalUniverse):
         return False
 
     @staticmethod
+    def border_derives(dO, t):
+        """
+        Does the border contain this term?
+        """
+        for b in dO:
+            if tuple_subs(t, b):
+                return True
+        return False
+
+    @staticmethod
     def test_border_contains():
         """
         Test border contains
@@ -425,10 +435,10 @@ class BorderBasedUniverse(ComputationalUniverse):
         The supplementary space is the space.
         """
         dO = set([self.term(lm(v, self._tau)) for v in V])
-        dO = BorderBasedUniverse.lower_border(dO)
-        # Get everything less than dO
-        O = set(chain.from_iterable(dominated_elements(o) for o in dO))
-        O.difference_update(dO)
+        # What are all the elements smaller than this?
+        O = set(chain.from_iterable(smaller_elements(o) for o in dO))
+        # Remove anything in dO that subsumes an element in O
+        O = [o for o in O if not BorderBasedUniverse.border_derives(dO,o)]
         return sorted(O, key=self._order, reverse=True)
 
     def contains_extension(self, B):
