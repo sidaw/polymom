@@ -11,7 +11,7 @@ from numpy import array, zeros, diag, sqrt
 from numpy.linalg import eig, inv, svd
 import scipy.sparse
 import ipdb
-#from munkres import Munkres
+from munkres import Munkres
 import sys
 
 eps = 1e-15
