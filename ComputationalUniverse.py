@@ -463,11 +463,12 @@ class BorderBasedUniverse(ComputationalUniverse):
 
 class DegreeBoundedUniverse(BorderBasedUniverse):
     """
-    Represents a universe by its border
+    Represents the term ideal; terms bounded by max degree.
     """
 
     def __init__(self, R, max_degree, tau=eps):
-        border = [tuple(max_degree for _ in R.symbols)]
+        zero = tuple(0 for _ in R.symbols)
+        border = [tuple_incr(zero, i, max_degree) for i in xrange(len(R.symbols))]
         super(DegreeBoundedUniverse, self).__init__(R, border, tau)
         self._max_degree = max_degree
 
@@ -476,11 +477,13 @@ class DegreeBoundedUniverse(BorderBasedUniverse):
         Get numeric index for the term.
         Note that the convention is that the "largest term gets index
         0".
-        e.g. (d,d,d) -> 0
+        e.g. (d,0,0) -> 0
+             (d-1, 1, 0) -> 1
+             (0, 0, 0) -> n partitions of d
         """
         d, n = self._max_degree, self._nsymbols
 
-        if self._order == lex:
+        if False and self._order == lex:
             d_ = d+1
             # The index is simply max degree multiples.
             idx = 0
@@ -499,7 +502,7 @@ class DegreeBoundedUniverse(BorderBasedUniverse):
         """
         d, n = self._max_degree, self._nsymbols
 
-        if self._order == lex:
+        if False and self._order == lex:
             d_ = d+1
             idx = d_**n - idx - 1
             # The index is simply max degree multiples.

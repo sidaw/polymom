@@ -12,6 +12,8 @@ from numpy import sin, cos, pi, array
 from numpy.random import rand, randn
 from numpy.linalg import norm
 
+import ipdb
+
 import BorderBasis as BB
 from util import prod, closest_permuted_vector
 
@@ -28,7 +30,7 @@ def generate_univariate_problem(n_common_zeros = 1, max_degree = 3, n_equations 
 def add_noise(I, sigma = 0.):
     return [i + sigma * randn() for i in I]
 
-def get_stats(n=3, d=20, e=20, sigma=0., tries=100):
+def get_univariate_stats(n=3, d=20, e=20, sigma=0., tries=100):
     status, epses, err = [], [], []
     for _ in xrange(tries):
         R, I, V = generate_univariate_problem(n, d, e)
@@ -91,11 +93,46 @@ def test_univarate(n=3, d=20, e=20):
             print "incorrect lengths!"
             return R, I, V
 
-def generate_multivariate_problem(n_common_zeros = 1, n_variables=10, n_equations=10):
+def generate_multivariate_problem(n_variables=10, n_equations=10):
     syms = ['x%d'%i for i in xrange(1,n_variables+1)]
     R, syms = xring(','.join(syms), RR, order=grevlex)
 
     I = [sum(coeff * sym for coeff, sym in zip(coeffs, syms))
             for coeffs in np.random.randn(n_variables, n_equations)]
     return R, I, [np.zeros(n_variables)]
+
+def get_multivariate_stats(n=100, factor=1.2, sigma=0., tries=100):
+    status, epses, err = [], [], []
+    for _ in xrange(tries):
+        R, I, V = generate_multivariate_problem(n, int(factor * n))
+        V = array(V)
+        I = add_noise(I, sigma)
+        for eps in [1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1]:
+            try :
+                V_ = BB.BorderBasisFactory(sigma + eps).generate(R, I).zeros()
+                V_ = array(V_)
+                epses.append(eps)
+                break
+            except AssertionError:
+                continue
+        else:
+            status.append(1)
+            epses.append(1)
+            err.append(1)
+            continue
+        if len(V_) < len (V):
+            status.append(2)
+            # Pad V_.
+            V_ = np.hstack((V_, np.zeros(len(V) - len(V_))))
+        elif len(V_) > len (V):
+            status.append(3)
+            # Pad V_.
+            V = np.hstack((V, np.zeros(len(V_) - len(V))))
+        else:
+            status.append(4)
+
+        #V_ = closest_permuted_vector(V, V_)
+        err.append(norm(V - V_))
+    return status, epses, err
+    
 
