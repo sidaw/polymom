@@ -219,7 +219,7 @@ class BorderBasisFactory(object):
         Return a border basis for fs.
         """
 
-        #ipdb.set_trace()
+        ipdb.set_trace()
         # Get the computation universe.
         L = DegreeBoundedUniverse.from_support(R, I, tau=self.delta)
         # Get a linear basis for I
