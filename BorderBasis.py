@@ -228,6 +228,10 @@ class BorderBasisFactory(object):
         V = csr_matrix(V)
         L, V, O = self.__inner_loop(L, V)
 
+        for v in V:
+            print L.as_poly(lt_normalize(v))
+        
+
         # Final reduction
         O, V = self.__final_reduction(L, V, O)
         return BorderBasis(L, O, V)

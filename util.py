@@ -12,6 +12,7 @@ from numpy.linalg import eig, inv, svd
 import scipy.sparse
 import ipdb
 from munkres import Munkres
+from simdiag import jacobi_angles
 import sys
 
 eps = 1e-15
@@ -271,6 +272,11 @@ def simultaneously_diagonalize(Ms):
       method.
     TODO: Use QR1JD.
     """
+    #ipdb.set_trace()
+    #R, L, err = jacobi_angles(*Ms)
+    #assert err < 1e-5
+    #return L, R
+    
     it = iter(Ms)
     M = it.next()
     l, R = eig(M)
@@ -341,4 +347,17 @@ def save_example(R, I, out=sys.stdout):
     out.write(",".join(map(str, R.symbols)) +"\n")
     for i in I:
         out.write(str(i) + "\n")
+
+def partitions(n, d):
+    """
+    Lists the partitions of d objects into n categories.
+    partitions(3,2) = [(2,0,0), (1,1,0), (1,0,1), (
+    """
+
+    if n == 1:
+        yield (d,)
+    else:
+        for i in xrange(d, -1, -1):
+            for tup in partitions(n-1,d-i):
+                yield (i,) + tup
 

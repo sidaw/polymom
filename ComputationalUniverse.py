@@ -468,7 +468,7 @@ class DegreeBoundedUniverse(BorderBasedUniverse):
 
     def __init__(self, R, max_degree, tau=eps):
         zero = tuple(0 for _ in R.symbols)
-        border = [tuple_incr(zero, i, max_degree) for i in xrange(len(R.symbols))]
+        border = list(partitions(len(R.symbols), max_degree))
         super(DegreeBoundedUniverse, self).__init__(R, border, tau)
         self._max_degree = max_degree
 
@@ -518,6 +518,6 @@ class DegreeBoundedUniverse(BorderBasedUniverse):
         """
         Get the largest degree of terms in I
         """
-        max_degree = max(max(map(max, i.monoms())) for i in I)
+        max_degree = max(max(map(sum, i.monoms())) for i in I)
         return DegreeBoundedUniverse(R, max_degree, tau)
 
