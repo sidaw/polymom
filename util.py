@@ -361,3 +361,18 @@ def partitions(n, d):
             for tup in partitions(n-1,d-i):
                 yield (i,) + tup
 
+def orthogonal(n):
+    """Generate a random orthogonal 'd' dimensional matrix, using the
+    the technique described in: 
+    Francesco Mezzadri, "How to generate random matrices from the
+    classical compact groups" 
+    """
+    n = int( n )
+    z = sc.randn(n, n) 
+    q,r = sc.linalg.qr(z) 
+    d = sc.diagonal(r) 
+    ph = d/sc.absolute(d) 
+    q = sc.multiply(q, ph, q) 
+    return q
+
+

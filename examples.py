@@ -19,7 +19,16 @@ class Model(object):
         + Construct a random instance
     """
 
-    def random_instance(self, *args):
+    def standard_instance(self, *args, **kwargs):
+        """
+        A simple standard instance of the problem.
+        """
+        raise NotImplementedError()
+
+    def random_instance(self, *args, **kwargs):
+        """
+        Randomized version. Assumes one of kwargs is 'seed'
+        """
         raise NotImplementedError()
 
 class ModelInstance(object):
