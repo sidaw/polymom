@@ -18,6 +18,8 @@ from itertools import chain
 
 from ComputationalUniverse import BorderBasedUniverse, DegreeBoundedUniverse
 
+import globals
+
 import ipdb
 
 class Basis(object):
@@ -189,7 +191,7 @@ class BorderBasisFactory(object):
         c = max((v.max()/lc(v, self.delta) for v in abs(V) if norm(v) > eps))
 
         tau = 1./np.sqrt(r + (s - r) * r**2 * c **2)
-        print "tau", tau
+        #print "tau", tau
         assert tau > eps
 
         return tau
@@ -209,7 +211,9 @@ class BorderBasisFactory(object):
         # Check if we've reached fixed point.
         if not L.contains_extension(B):
             # TODO: An optimization is to extend L by the terms in B.
+            globals.info.add_stage()
             L, V = L.extend(V)
+            globals.info.L = L
             return self.__inner_loop(L, V)
         else:
             return L, V, B
@@ -222,14 +226,17 @@ class BorderBasisFactory(object):
         #ipdb.set_trace()
         # Get the computation universe.
         L = DegreeBoundedUniverse.from_support(R, I, tau=self.delta)
+
+        globals.info = globals.AlgorithmInformation(L, I)
+
         # Get a linear basis for I
         V = L.vector_space(I)
         _, V = srref(V, self.delta) # Start sparse!
         V = csr_matrix(V)
         L, V, O = self.__inner_loop(L, V)
 
-        for v in V:
-            print L.as_poly(lt_normalize(v))
+        #for v in V:
+        #    print L.as_poly(lt_normalize(v))
         
 
         # Final reduction

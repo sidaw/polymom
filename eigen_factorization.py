@@ -41,10 +41,3 @@ def eigen_factorize(A):
 
     return R, I
 
-def test_lu_factorize(d=3):
-    A = np.random.randn(d,d)
-    L_, U_ = lu_factorize(A)
-    assert np.allclose(L_.dot(U_), A)
-
-
-

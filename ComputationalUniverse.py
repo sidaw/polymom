@@ -16,6 +16,8 @@ from sympy import ring, RR, lex, grlex, grevlex, pprint
 from util import *
 from itertools import chain
 
+import globals
+
 import ipdb
 
 eps = 1e-10
@@ -370,6 +372,7 @@ class BorderBasedUniverse(ComputationalUniverse):
         if tau is None: tau = self._tau
 
         _, ncols = V.shape
+        assert ncols == self.nterms
 
         Wr, Wc = [], []
         data = []
@@ -427,6 +430,7 @@ class BorderBasedUniverse(ComputationalUniverse):
         if W.shape[0] == 0:
             return V
         else:
+            globals.info.add_extension(W)
             return self.stable_extension(vstack((V, W), 'csr'), tau)
 
     def supplementary_space(self, V):
