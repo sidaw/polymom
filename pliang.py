@@ -15,12 +15,18 @@ R, x, y, z = sp.ring('x,y,z', sp.RR, order=sp.grevlex)
 I = [ x**2 - 1, y**2 - 4, z**2 - 9]
 
 # n = 4 takes a long time
-n = 2
+n = 4
 Rvs = sp.ring(' '.join('v'+str(i) for i in range(1, n + 1)), sp.RR, order=sp.grevlex)
 R, vs = Rvs[0], Rvs[1:]
-I = [v**2 - 1 for v in vs]
+I = []
+I.extend([v**2 - 1 for v in vs])
+#I.extend([(v-1)**2 for v in vs])
+#I.extend([v-1 for v in vs])
+#I.extend([vs[i] - vs[i-1] for i in range(1, len(vs))]) # Makes it fast
 
+print('Generating')
 B = BB.BorderBasisFactory(1e-5).generate(R,I)
+print('Done')
 
 print("=== Generator Basis:")
 for f in B.generator_basis:
