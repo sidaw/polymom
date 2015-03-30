@@ -375,4 +375,13 @@ def orthogonal(n):
     q = sc.multiply(q, ph, q) 
     return q
 
+def svdk( X, k ):
+    """Top-k SVD decomposition"""
+    U, D, Vt = svd( X, full_matrices=False )
+    return U[:, :k], D[:k], Vt[:k, :]
+
+def approxk( X, k ):
+    """Best k rank approximation of X"""
+    U, D, Vt = svdk( X, k )
+    return U.dot( diag( D ) ).dot( Vt )
 
