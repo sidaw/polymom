@@ -13,6 +13,7 @@ import numpy as np
 
 import sympy.polys.monomials as mn
 from sympy.polys.orderings import monomial_key
+from cvxopt import matrix, sparse
 
 class MomentMatrix(object):
     """
@@ -21,9 +22,9 @@ class MomentMatrix(object):
     degree: max degree of the basic monomials corresponding to each row,
     so the highest degree monomial in the entire moment matrix would be twice that
     """
-    def __init__(self, degree, vars, morder='grevlex'):
+    def __init__(self, degree, variables, morder='grevlex'):
         self.degree = degree
-        self.vars = vars
+        self.vars = variables
         self.num_vars = len(self.vars)
 
         # this object is a list of all monomials
@@ -72,35 +73,34 @@ class MomentMatrix(object):
         return Ai
 
     # if provided, constraints should be a list of sympy polynomials that should be 0.
-    def get_cvxopt_inputs(self, constraints = None):
+    def get_cvxopt_inputs(self, constraints = None, sparsemat = True):
         # many options for what c might be
-        c = np.ones((self.num_matrix_monos, 1))
-        G = self.get_all_indicator_lists()
-        h = np.zeros((self.num_row_monos,self.num_row_monos))
-
+        c = matrix(np.ones((self.num_matrix_monos, 1)))
+        
         if constraints is not None:
             num_constrs = len(constraints)
         else:
             num_constrs = 0
-            
-        A = np.zeros((num_constrs+1, self.num_matrix_monos))
-        b = np.zeros((num_constrs+1,1))
+
+        Anp = np.zeros((num_constrs+1, self.num_matrix_monos))
+        bnp = np.zeros((num_constrs+1,1))
         if constraints is not None:
             for i,constr in enumerate(constraints):
-                A[i,:] = self.get_rowofA(constr)
+                Anp[i,:] = self.get_rowofA(constr)
             
-        A[-1,0] = 1
-        b[-1] = 1
-        return {'c':c, 'G':G, 'h':h, 'A':A, 'b':b}
+        Anp[-1,0] = 1
+        bnp[-1] = 1
+        b = matrix(bnp)
+        
+        if sparsemat:
+            Gs = [sparse(self.get_all_indicator_lists(), tc='d')]
+            A = sparse(matrix(Anp))
+        else:
+            Gs = [matrix(self.get_all_indicator_lists(), tc='d')]
+            A = matrix(Anp)
+            
+        hs = [matrix(np.zeros((self.num_row_monos,self.num_row_monos)))]    
+        
+        return {'c':c, 'Gs':Gs, 'hs':hs, 'A':A, 'b':b}
 
 
-x = sp.symbols('x')
-M = MomentMatrix(3, [x], morder='grevlex')
-constrs = [x-1.5, x**2-2.5, x**3-4.5]
-cin = M.get_cvxopt_inputs(constrs)
-
-from cvxopt import matrix, solvers
-sol = solvers.sdp(matrix(cin['c'], tc='d'), Gs=[matrix(cin['G'], tc='d')], \
-                  hs=[matrix(cin['h'], tc='d')], A=matrix(cin['A'], tc='d'), b=matrix(cin['b'], tc='d'))
-
-print sol['x']
