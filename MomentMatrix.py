@@ -68,6 +68,7 @@ class MomentMatrix(object):
     def get_rowofA(self, constr):
         Ai = np.zeros(self.num_matrix_monos)
         coefdict = constr.as_coefficients_dict();
+        # you can build a dict and do this faster, but no point since we solve SDP later
         for i,yi in enumerate(self.matrix_monos):
             Ai[i] = coefdict.get(yi,0)
         return Ai
@@ -77,17 +78,14 @@ class MomentMatrix(object):
         # many options for what c might be
         c = matrix(np.ones((self.num_matrix_monos, 1)))
         
-        if constraints is not None:
-            num_constrs = len(constraints)
-        else:
-            num_constrs = 0
-
+        num_constrs = len(constraints) if constraints is not None else 0
+        
         Anp = np.zeros((num_constrs+1, self.num_matrix_monos))
         bnp = np.zeros((num_constrs+1,1))
         if constraints is not None:
             for i,constr in enumerate(constraints):
                 Anp[i,:] = self.get_rowofA(constr)
-            
+        
         Anp[-1,0] = 1
         bnp[-1] = 1
         b = matrix(bnp)
