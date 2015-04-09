@@ -15,6 +15,12 @@ import sympy.polys.monomials as mn
 from sympy.polys.orderings import monomial_key
 from cvxopt import matrix, sparse
 
+def monomial_filter(mono, filter='even', debug=False):
+        if filter is 'even':
+            if debug and not mono==1:
+                print str(mono) + ':\t' + str(all([(i%2)==0 for i in mono.as_poly().degree_list()]))
+            return 1 if mono==1 else int(all([i%2==0 for i in mono.as_poly().degree_list()]))
+
 class MomentMatrix(object):
     """
     class to handle moment matrices and localizing matrices,
@@ -73,11 +79,15 @@ class MomentMatrix(object):
             Ai[i] = coefdict.get(yi,0)
         return Ai
 
+
     # if provided, constraints should be a list of sympy polynomials that should be 0.
-    def get_cvxopt_inputs(self, constraints = None, sparsemat = True):
+    def get_cvxopt_inputs(self, constraints = None, sparsemat = True, filter = 'even'):
         # many options for what c might be
-        c = matrix(np.ones((self.num_matrix_monos, 1)))
-        
+        if filter is None:
+            c = matrix(np.ones((self.num_matrix_monos, 1)))
+        else:
+            c = matrix([monomial_filter(yi, filter='even') for yi in self.matrix_monos], tc='d')
+            
         num_constrs = len(constraints) if constraints is not None else 0
         
         Anp = np.zeros((num_constrs+1, self.num_matrix_monos))
