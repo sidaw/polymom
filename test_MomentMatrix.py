@@ -24,9 +24,13 @@ def test_unimixture():
     assert(abs(sol['x'][3]-4.5) <= 1e-5)
     return M,sol
 
-# helper function to generate coeffs of the Gaussian moments
-# they are non-neg and equal in abs to the coeffs hermite polynomials
+
 def hermite_coeffs(N=6):
+    """
+    helper function to generate coeffs of the Gaussian moments they are
+    non-neg and equal in abs to the coeffs hermite polynomials which can
+    be generated via a simple recurrence.
+    """
     K = N
     A = np.zeros((N,K), dtype=np.int)
     # the recurrence formula to get coefficients of the hermite polynomails
@@ -36,8 +40,10 @@ def hermite_coeffs(N=6):
             A[n+1,k] = -n*A[n-1,k] if k==0 else A[n,k-1] - n*A[n-1,k]
     return A
 
-def test_1dmog(mus=[-1., 4.], sigs=[2, 1.], pis=[0.5, 0.5], deg = 4):
+def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3):
     print 'testing 1d mixture of Gaussians'
+    # constraints on parameters here
+    
     K = len(mus)
     mu,sig = sp.symbols('mu,sigma')
     M = mm.MomentMatrix(deg, [mu, sig], morder='grevlex')
@@ -56,8 +62,7 @@ def test_1dmog(mus=[-1., 4.], sigs=[2, 1.], pis=[0.5, 0.5], deg = 4):
     print constrs
     cin = M.get_cvxopt_inputs(constrs[1:])
 
-    # constraints on parameters here
-    gs = [sig-0.5, 25-mu**2, 3.5-sig**2]
+    gs = [sig-0.25,100-mu**2, 10-sig**2]
     locmatrices = [mm.LocalizingMatrix(M, g) for g in gs]
     Ghs = [lm.get_cvxopt_Gh() for lm in locmatrices]
 
@@ -118,13 +123,13 @@ def test_K_by_D(K=3, D=3, pis=[0.25, 0.25, 0.5], deg=1, degobs=3):
     return M,sol
 
 Muni,sol_uni=test_unimixture()
-M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., 3.], pis=[0.5, 0.5], deg = 3)
-#M_KbyD,sol_KbyD=test_K_by_D(K=3,D=3,pis=[0.25,0.25,0.5], deg=2, degobs=3)
-#M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=2,degobs=3)
+M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.6, 0.4], deg = 3)
+M_KbyD,sol_KbyD=test_K_by_D(K=3,D=3,pis=[0.25,0.25,0.5], deg=2, degobs=3)
+M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=2,degobs=3)
 
-## Ktry = 15
-## pis = np.random.rand(Ktry); pis = pis/sum(pis);
+Ktry = 15
+pis = np.random.rand(Ktry); pis = pis/sum(pis);
 ## # change to D=4 for a failure
-## M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=Ktry,D=5,pis=pis,deg=3,degobs=4)
+M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=Ktry,D=5,pis=pis,deg=3,degobs=4)
 
 
