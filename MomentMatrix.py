@@ -121,17 +121,17 @@ class MomentMatrix(object):
 
 class LocalizingMatrix(object):
     '''
-    poly_gs is a list of polynomials that multiplies termwise
-    to give the localizing matrices
-    This class depends on the moment matrix class and has exactly the
-    same monomials as the base moment matrix. So the SDP variables
-    still corresponds to matrix_monos
+    poly_g is a polynomial that multiplies termwise with a basic
+    moment matrix of smaller size to give the localizing matrices This
+    class depends on the moment matrix class and has exactly the same
+    monomials as the base moment matrix. So the SDP variables still
+    corresponds to matrix_monos
     '''
 
     def __init__(self, mm, poly_g, morder='grevlex'):
         """
-        @params - mm is a MomentMatrix object
-        @params - poly_g the localizing polynomial
+        @param - mm is a MomentMatrix object
+        @param - poly_g the localizing polynomial
         """
         self.mm = mm
         self.poly_g = poly_g
