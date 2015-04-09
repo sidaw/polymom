@@ -42,7 +42,7 @@ def test_1dmog(mus=[-1., 4.], sigs=[2, 1.], pis=[0.5, 0.5], deg = 4):
     mu,sig = sp.symbols('mu,sigma')
     M = mm.MomentMatrix(deg, [mu, sig], morder='grevlex')
 
-    num_constrs = 8; # so observe num_constrs-1 moments
+    num_constrs = 7; # so observe num_constrs-1 moments
     H = abs(hermite_coeffs(num_constrs))
     constrs = [0]*num_constrs
     
@@ -57,7 +57,7 @@ def test_1dmog(mus=[-1., 4.], sigs=[2, 1.], pis=[0.5, 0.5], deg = 4):
     cin = M.get_cvxopt_inputs(constrs[1:])
 
     # constraints on parameters here
-    gs = [sig-1, 2-sig, 20-sig**2+mu**2]
+    gs = [sig-0.5, 25-mu**2, 3.5-sig**2]
     locmatrices = [mm.LocalizingMatrix(M, g) for g in gs]
     Ghs = [lm.get_cvxopt_Gh() for lm in locmatrices]
 
@@ -118,9 +118,9 @@ def test_K_by_D(K=3, D=3, pis=[0.25, 0.25, 0.5], deg=1, degobs=3):
     return M,sol
 
 Muni,sol_uni=test_unimixture()
-M_mog,sol_mog=test_1dmog(mus=[-1., 4.], sigs=[1., 1.], pis=[0.5, 0.5], deg = 4)
-M_KbyD,sol_KbyD=test_K_by_D(K=3,D=3,pis=[0.25,0.25,0.5], deg=2, degobs=3)
-M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=2,degobs=3)
+M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., 3.], pis=[0.5, 0.5], deg = 3)
+#M_KbyD,sol_KbyD=test_K_by_D(K=3,D=3,pis=[0.25,0.25,0.5], deg=2, degobs=3)
+#M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=2,degobs=3)
 
 ## Ktry = 15
 ## pis = np.random.rand(Ktry); pis = pis/sum(pis);
