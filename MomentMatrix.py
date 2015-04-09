@@ -1,10 +1,12 @@
 #!/usr/bin/env python2.7
 # -*- coding: utf-8 -*-
 """
-class to handle moment matrices and localizing matrices,
-and to produce the right outputs for the cvxopt SDP solver
+classes and helper moment matrices and localizing matrices,
+which takes contraints as input produce the right outputs
+for the cvxopt SDP solver
 
-Notes: tested using sympy 0.7.6 (not the default distribution?) and cvxopt
+Sketchy: tested using sympy 0.7.6 (the default distribution did not work)
+and cvxopt
 """
 
 #from __future__ import division
@@ -23,12 +25,18 @@ def monomial_filter(mono, filter='even', debug=False):
 
 class MomentMatrix(object):
     """
-    class to handle moment matrices and localizing matrices,
-    and to produce the right outputs for the cvxopt SDP solver
-    degree: max degree of the basic monomials corresponding to each row,
-    so the highest degree monomial in the entire moment matrix would be twice that
+    class to handle moment matrices and localizing matrices, and to
+    produce the right outputs for the cvxopt SDP solver degree: max
+    degree of the basic monomials corresponding to each row, so the
+    highest degree monomial in the entire moment matrix would be twice
+    the provided degree.
     """
     def __init__(self, degree, variables, morder='grevlex'):
+        """
+        @param degree - highest degree of the first row/column of the
+        moment matrix
+        @param variables - list of sympy symbols
+        """
         self.degree = degree
         self.vars = variables
         self.num_vars = len(self.vars)
@@ -42,27 +50,19 @@ class MomentMatrix(object):
                                  key=monomial_key(morder, self.vars[::-1]))
         self.num_row_monos = mn.monomial_count(self.num_vars, self.degree)
 
-        # alphas are the vectors of exponents, num_mono by num_vars in size
-        # actually serves no purpose right now
-        self.alphas = np.zeros((self.num_row_monos, self.num_vars), dtype=np.int)
-        for r,mono in enumerate(self.row_monos):
-            exponents = mono.as_powers_dict()
-            for c,var in enumerate(self.vars):
-                self.alphas[r, c] = exponents[var]
-                
-        # this list correspond to the actual variables in the sdp solver
+        # This list correspond to the actual variables in the sdp solver
         self.matrix_monos = sorted(mn.itermonomials(self.vars, 2*self.degree),\
                                    key=monomial_key(morder, self.vars[::-1]))
 
-        self.num_matrix_monos = len(self.matrix_monos);
+        self.num_matrix_monos = len(self.matrix_monos)
 
-        self.expanded_monos = [];
+        self.expanded_monos = []
         for yi in self.row_monos:
             for yj in self.row_monos:
-                self.expanded_monos.append(yi*yj);
-
-    def get_indicator_list(self, monomial):
-        return [-int(yi==monomial) for yi in self.expanded_monos]
+                self.expanded_monos.append(yi*yj)
+    
+    def get_indicator_list(self, yj):
+        return [-int(yi==yj) for yi in self.expanded_monos]
 
     def get_all_indicator_lists(self):
         allconstraints = [];
@@ -70,8 +70,12 @@ class MomentMatrix(object):
             allconstraints += [self.get_indicator_list(yi)]
         return allconstraints
 
-    # constr is a polynomial constraint expressed as a sympy polynomial
     def get_rowofA(self, constr):
+        """
+        @param - constr is a polynomial constraint expressed as a sympy
+        polynomial. constr is h_j in Lasserre's notation,
+        and represents contraints on entries of the moment matrix.
+        """
         Ai = np.zeros(self.num_matrix_monos)
         coefdict = constr.as_coefficients_dict();
         # you can build a dict and do this faster, but no point since we solve SDP later
@@ -79,10 +83,13 @@ class MomentMatrix(object):
             Ai[i] = coefdict.get(yi,0)
         return Ai
 
-
-    # if provided, constraints should be a list of sympy polynomials that should be 0.
     def get_cvxopt_inputs(self, constraints = None, sparsemat = True, filter = 'even'):
-        # many options for what c might be
+        """
+        if provided, constraints should be a list of sympy polynomials that should be 0.
+
+        """
+        
+        # Many for what c might be, not yet determined really
         if filter is None:
             c = matrix(np.ones((self.num_matrix_monos, 1)))
         else:
@@ -101,14 +108,72 @@ class MomentMatrix(object):
         b = matrix(bnp)
         
         if sparsemat:
-            Gs = [sparse(self.get_all_indicator_lists(), tc='d')]
+            G = [sparse(self.get_all_indicator_lists(), tc='d')]
             A = sparse(matrix(Anp))
         else:
-            Gs = [matrix(self.get_all_indicator_lists(), tc='d')]
+            G = [matrix(self.get_all_indicator_lists(), tc='d')]
             A = matrix(Anp)
             
-        hs = [matrix(np.zeros((self.num_row_monos,self.num_row_monos)))]    
+        h = [matrix(np.zeros((self.num_row_monos,self.num_row_monos)))]    
         
-        return {'c':c, 'Gs':Gs, 'hs':hs, 'A':A, 'b':b}
+        return {'c':c, 'G':G, 'h':h, 'A':A, 'b':b}
 
 
+class LocalizingMatrix(object):
+    '''
+    poly_gs is a list of polynomials that multiplies termwise
+    to give the localizing matrices
+    This class depends on the moment matrix class and has exactly the
+    same monomials as the base moment matrix. So the SDP variables
+    still corresponds to matrix_monos
+    '''
+
+    def __init__(self, mm, poly_g, morder='grevlex'):
+        """
+        @params - mm is a MomentMatrix object
+        @params - poly_g the localizing polynomial
+        """
+        self.mm = mm
+        self.poly_g = poly_g
+        self.deg_g = poly_g.as_poly().total_degree()
+        #there is no point to a constant localization matrix,
+        #and it will cause crash because how sympy handles 1
+        assert(self.deg_g>0)         
+        rawmonos = mn.itermonomials(self.mm.vars, self.mm.degree-self.deg_g);
+        self.row_monos = sorted(rawmonos,\
+                                 key=monomial_key(morder, mm.vars[::-1]))
+        self.num_row_monos = len(self.row_monos)
+        self.expanded_polys = [];
+        for yi in self.row_monos:
+            for yj in self.row_monos:
+                self.expanded_polys.append(sp.expand(poly_g*yi*yj))
+        
+    def get_indicator(self, yi):
+        """
+        @param - polynomial here is called g in Lasserre's notation
+        and defines the underlying set K some parallel with
+        MomentMatrix.get_indicator_list. Except now expanded_monos becomes
+        expanded_polys
+        """
+        return [-int(pi.as_coefficients_dict().get(yi, 0)) for pi in self.expanded_polys]
+
+    def get_indicators_list(self):
+        allconstraints = [];
+        for yi in self.mm.matrix_monos:
+            allconstraints += [self.get_indicator(yi)]
+        return allconstraints
+
+    def get_cvxopt_Gh(self, sparsemat = True):
+        """
+        get the G and h corresponding to this localizing matrix
+
+        """
+        
+        if sparsemat:
+            G = sparse(self.get_indicators_list(), tc='d')
+        else:
+            G = matrix(self.get_indicators_list(), tc='d')
+            
+        h = matrix(np.zeros((self.num_row_monos,self.num_row_monos)))
+        
+        return {'G':G, 'h':h}
