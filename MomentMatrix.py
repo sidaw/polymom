@@ -230,20 +230,28 @@ class LocalizingMatrix(object):
         for yi in self.row_monos:
             for yj in self.row_monos:
                 self.expanded_polys.append(sp.expand(poly_g*yi*yj))
+        # mapping from a monomial to a list of indices of
+        # where the monomial appears in the moment matrix
+        self.term_to_indices_dict = defaultdict(list)
+        for i,pi in enumerate(self.expanded_polys):
+            coeffdict = pi.as_coefficients_dict()
+            for mono in coeffdict:
+                coeff = coeffdict[mono]
+                self.term_to_indices_dict[mono].append( (i,float(coeff)) )
         
-    def __get_indicator(self, yi):
+    def __get_indicators_list(self):
         """
         @param - polynomial here is called g in Lasserre's notation
         and defines the underlying set K some parallel with
-        MomentMatrix.get_indicator_list. Except now expanded_monos becomes
+        MomentMatrix.__get_indicators_list. Except now expanded_monos becomes
         expanded_polys
         """
-        return [-int(pi.as_coefficients_dict().get(yi, 0)) for pi in self.expanded_polys]
-
-    def __get_indicators_list(self):
-        allconstraints = [];
+        allconstraints = []
         for yi in self.mm.matrix_monos:
-            allconstraints += [self.__get_indicator(yi)]
+            indices = [k for k,v in self.term_to_indices_dict[yi]]
+            values = [-v for k,v in self.term_to_indices_dict[yi]]
+            allconstraints += [spmatrix(values, [0]*len(indices), \
+                                        indices, size=(1,len(self.expanded_polys)), tc='d')]
         return allconstraints
 
     def get_cvxopt_Gh(self, sparsemat = True):
@@ -253,9 +261,9 @@ class LocalizingMatrix(object):
         """
         
         if sparsemat:
-            G = sparse(self.__get_indicators_list(), tc='d')
+            G = sparse(self.__get_indicators_list(), tc='d').trans()
         else:
-            G = matrix(self.__get_indicators_list(), tc='d')
+            G = matrix(self.__get_indicators_list(), tc='d').trans()
             
         h = matrix(np.zeros((self.num_row_monos,self.num_row_monos)))
         

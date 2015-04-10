@@ -394,3 +394,18 @@ def approxk( X, k ):
     U, D, Vt = svdk( X, k )
     return U.dot( diag( D ) ).dot( Vt )
 
+def hermite_coeffs(N=6):
+    """
+    helper function to generate coeffs of the Gaussian moments they are
+    non-neg and equal in abs to the coeffs hermite polynomials which can
+    be generated via a simple recurrence.
+    For usage see test_1dmog of test_MomentMatrix
+    """
+    K = N
+    A = np.zeros((N,K), dtype=np.int)
+    # the recurrence formula to get coefficients of the hermite polynomails
+    A[0,0] = 1; A[1,1] = 1; #A[2,0]=-1; A[2,2]=1;
+    for n in range(1,N-1):
+        for k in range(K):
+            A[n+1,k] = -n*A[n-1,k] if k==0 else A[n,k-1] - n*A[n-1,k]
+    return A

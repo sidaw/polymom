@@ -9,7 +9,7 @@ from cvxopt import matrix, sparse, solvers
 import sympy as sp
 import numpy as np
 import MomentMatrix as mm
-
+from util import hermite_coeffs
 import ipdb
 
 def test_unimixture():
@@ -27,20 +27,6 @@ def test_unimixture():
     print M.extract_solutions_lasserre(sol['x'], Kmax = 2)
     return M,sol
 
-def hermite_coeffs(N=6):
-    """
-    helper function to generate coeffs of the Gaussian moments they are
-    non-neg and equal in abs to the coeffs hermite polynomials which can
-    be generated via a simple recurrence.
-    """
-    K = N
-    A = np.zeros((N,K), dtype=np.int)
-    # the recurrence formula to get coefficients of the hermite polynomails
-    A[0,0] = 1; A[1,1] = 1; #A[2,0]=-1; A[2,2]=1;
-    for n in range(1,N-1):
-        for k in range(K):
-            A[n+1,k] = -n*A[n-1,k] if k==0 else A[n,k-1] - n*A[n-1,k]
-    return A
 
 def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3):
     print 'testing 1d mixture of Gaussians'
@@ -105,7 +91,7 @@ def test_K_by_D(K=3, D=3, pis=[0.25, 0.25, 0.5], deg=1, degobs=3):
             constrsval += pis[k]*mono.evalf(subs=subsk)
         constrs[i] -= constrsval
         
-    print constrs
+    #print constrs
     filtered_constrs = [constr for constr in constrs[1:] if constr.as_poly().total_degree()<=degobs]
     print filtered_constrs
     cin = M.get_cvxopt_inputs(filtered_constrs)
@@ -138,7 +124,7 @@ M_mog,sol_mog=test_1dmog(mus=[5,-3], \
 M_KbyD,sol_KbyD=test_K_by_D(K=3,D=3,pis=[0.25,0.25,0.5], deg=2, degobs=3)
 M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=3,degobs=3)
 
-Ktry = 15
+Ktry = 16
 pis = np.random.rand(Ktry); pis = pis/sum(pis);
 ## # change to D=4 for a failure
 M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=Ktry,D=5,pis=pis,deg=3,degobs=4)
