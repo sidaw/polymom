@@ -15,7 +15,7 @@ from munkres import Munkres
 from simdiag import jacobi_angles
 import sys
 
-eps = 1e-15
+eps = 1e-8
 
 def norm(arr):
     """
@@ -190,6 +190,15 @@ def lt_normalize(R, tau=0):
     """
     for i in xrange(R.shape[0]):
         R[i] /= lc(R[i], tau)
+    return R
+
+def row_normalize_leadingone(R, tau = eps):
+    """
+    Normalize rows to have leading ones
+    """
+    for r in R:
+        lead = np.trim_zeros(r)[0]
+        r /= lead
     return R
 
 def row_normalize(R, tau = eps):

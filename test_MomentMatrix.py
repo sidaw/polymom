@@ -10,6 +10,8 @@ import sympy as sp
 import numpy as np
 import MomentMatrix as mm
 
+import ipdb
+
 def test_unimixture():
     print 'testing simple unimixture with a skipped observation'
     x = sp.symbols('x')
@@ -22,8 +24,8 @@ def test_unimixture():
     print sol['x']
     print abs(sol['x'][3]-4.5)
     assert(abs(sol['x'][3]-4.5) <= 1e-5)
+    print M.extract_solutions_lasserre(sol['x'], Kmax = 2)
     return M,sol
-
 
 def hermite_coeffs(N=6):
     """
@@ -62,7 +64,8 @@ def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3):
     print constrs
     cin = M.get_cvxopt_inputs(constrs[1:])
 
-    gs = [sig-0.25,100-mu**2, 10-sig**2]
+    gs = [sig-1, 30-mu**2, 5-sig**2]
+    #gs = [sig-1]
     locmatrices = [mm.LocalizingMatrix(M, g) for g in gs]
     Ghs = [lm.get_cvxopt_Gh() for lm in locmatrices]
 
@@ -80,7 +83,7 @@ def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3):
         else:
             trueval = 1
         print '%s:\t%f\t%f' % (str(mono), sol['x'][i], trueval)
-
+    print M.extract_solutions_lasserre(sol['x'], Kmax=len(mus))
     return M,sol
 
 # K: num components, D: dimensions, pis: the mixture coefficients
@@ -119,13 +122,21 @@ def test_K_by_D(K=3, D=3, pis=[0.25, 0.25, 0.5], deg=1, degobs=3):
         else:
             trueval = 1
         print '%s:\t%f\t%f' % (str(mono), sol['x'][i], trueval)
-        
+    print M.extract_solutions_lasserre(sol['x'], Kmax=K)
     return M,sol
 
 Muni,sol_uni=test_unimixture()
-M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.6, 0.4], deg = 3)
+M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3)
+
+Kmog = 2;
+pis = np.random.rand(Kmog); pis = pis/sum(pis)
+mus = (-5+10*np.random.rand(2)).tolist()
+print mus
+M_mog,sol_mog=test_1dmog(mus=[5,-3], \
+                          sigs=(1+np.random.rand(2)).tolist(), pis=pis, deg = 3)
+                         
 M_KbyD,sol_KbyD=test_K_by_D(K=3,D=3,pis=[0.25,0.25,0.5], deg=2, degobs=3)
-M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=2,degobs=3)
+M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=3,degobs=3)
 
 Ktry = 15
 pis = np.random.rand(Ktry); pis = pis/sum(pis);

@@ -16,12 +16,22 @@ import numpy as np
 import sympy.polys.monomials as mn
 from sympy.polys.orderings import monomial_key
 from cvxopt import matrix, sparse
+import scipy.linalg
+
+import util
+import ipdb
 
 def monomial_filter(mono, filter='even', debug=False):
         if filter is 'even':
             if debug and not mono==1:
                 print str(mono) + ':\t' + str(all([(i%2)==0 for i in mono.as_poly().degree_list()]))
             return 1 if mono==1 else int(all([i%2==0 for i in mono.as_poly().degree_list()]))
+
+def dict_mono_to_ind(monolist):
+    dict = {}
+    for i,mono in enumerate(monolist):
+        dict[mono]=i
+    return dict
 
 class MomentMatrix(object):
     """
@@ -43,12 +53,15 @@ class MomentMatrix(object):
 
         # this object is a list of all monomials
         # in num_vars variables up to degree degree
-        rawmonos = mn.itermonomials(self.vars, self.degree);
+        rawmonos = mn.itermonomials(self.vars, self.degree)
 
         # the reverse here is a bit random..., but has to be done
         self.row_monos = sorted(rawmonos,\
                                  key=monomial_key(morder, self.vars[::-1]))
         self.num_row_monos = mn.monomial_count(self.num_vars, self.degree)
+        
+        if not self.num_row_monos == len(self.row_monos):
+            print 'monomial count mismatch!'
 
         # This list correspond to the actual variables in the sdp solver
         self.matrix_monos = sorted(mn.itermonomials(self.vars, 2*self.degree),\
@@ -60,17 +73,20 @@ class MomentMatrix(object):
         for yi in self.row_monos:
             for yj in self.row_monos:
                 self.expanded_monos.append(yi*yj)
+                
+    def __str__(self):
+        return 'moment matrix for %d variables: %s' % (self.num_vars, str(self.vars))
     
-    def get_indicator_list(self, yj):
+    def __get_indicator(self, yj):
         return [-int(yi==yj) for yi in self.expanded_monos]
 
-    def get_all_indicator_lists(self):
+    def __get_indicators_lists(self):
         allconstraints = [];
         for yi in self.matrix_monos:
-            allconstraints += [self.get_indicator_list(yi)]
+            allconstraints += [self.__get_indicator(yi)]
         return allconstraints
 
-    def get_rowofA(self, constr):
+    def __get_rowofA(self, constr):
         """
         @param - constr is a polynomial constraint expressed as a sympy
         polynomial. constr is h_j in Lasserre's notation,
@@ -101,22 +117,83 @@ class MomentMatrix(object):
         bnp = np.zeros((num_constrs+1,1))
         if constraints is not None:
             for i,constr in enumerate(constraints):
-                Anp[i,:] = self.get_rowofA(constr)
+                Anp[i,:] = self.__get_rowofA(constr)
         
         Anp[-1,0] = 1
         bnp[-1] = 1
         b = matrix(bnp)
         
         if sparsemat:
-            G = [sparse(self.get_all_indicator_lists(), tc='d')]
+            G = [sparse(self.__get_indicators_lists(), tc='d')]
             A = sparse(matrix(Anp))
         else:
-            G = [matrix(self.get_all_indicator_lists(), tc='d')]
+            G = [matrix(self.__get_indicators_lists(), tc='d')]
             A = matrix(Anp)
             
         h = [matrix(np.zeros((self.num_row_monos,self.num_row_monos)))]    
         
         return {'c':c, 'G':G, 'h':h, 'A':A, 'b':b}
+
+    def numeric_instance(self, vals):
+        """
+        assign the matrix_monos vals and return an np matrix
+        """
+        assert(len(vals)==len(self.matrix_monos))
+        
+        G = self.__get_indicators_lists()
+        num_inst = np.zeros(len(self.row_monos)**2)
+        for i,val in enumerate(vals):
+            num_inst += -val*np.array(G[i])
+        return num_inst.reshape(len(self.row_monos),len(self.row_monos))
+        
+        
+    def extract_solutions_lasserre(self, vals, Kmax=10, tol=1e-5):
+        """
+        extract solutions via (unstable) row reduction described by Lassarre and used in gloptipoly
+        """
+        M = self.numeric_instance(vals)
+        Us,Sigma,Vs=np.linalg.svd(M)
+        #
+        #ipdb.set_trace()
+        count = min(Kmax,sum(Sigma>tol))
+        # now using Lassarre's notation in the extraction section of
+        # "Moments, Positive Polynomials and their Applications"
+        T,Ut = util.srref(Vs[0:count,:])
+        print 'the next biggest eigenvalue we are losing is %f' % Sigma[count]
+        # inplace!
+        util.row_normalize_leadingone(Ut)
+        
+        couldbes = np.where(Ut>0.9)
+        ind_leadones = np.zeros(Ut.shape[0], dtype=np.int)
+        for j in reversed(range(len(couldbes[0]))):
+            ind_leadones[couldbes[0][j]] = couldbes[1][j]
+        
+        basis = [self.row_monos[i] for i in ind_leadones]
+        dict_row_monos = dict_mono_to_ind(self.row_monos)
+        
+        #ipdb.set_trace()
+        Ns = {}
+        bl = len(basis)
+        # create multiplication matrix for each variable
+        for var in self.vars:
+            Nvar = np.zeros((bl,bl))
+            for i,b in enumerate(basis):
+                Nvar[:,i] = Ut[ :,dict_row_monos[var*b] ]
+            Ns[var] = Nvar
+
+        N = np.zeros((bl,bl))
+        for var in Ns:
+            N+=Ns[var]*np.random.randn()
+        T,Q=scipy.linalg.schur(N)
+
+        sols = {}
+        
+        quadf = lambda A, x : np.dot(x, np.dot(A,x))
+        for var in self.vars:
+            sols[var] = [quadf(Ns[var], Q[:,j]) for j in range(bl)]
+        #ipdb.set_trace()
+        return sols
+        
 
 
 class LocalizingMatrix(object):
@@ -148,7 +225,7 @@ class LocalizingMatrix(object):
             for yj in self.row_monos:
                 self.expanded_polys.append(sp.expand(poly_g*yi*yj))
         
-    def get_indicator(self, yi):
+    def __get_indicator(self, yi):
         """
         @param - polynomial here is called g in Lasserre's notation
         and defines the underlying set K some parallel with
@@ -157,10 +234,10 @@ class LocalizingMatrix(object):
         """
         return [-int(pi.as_coefficients_dict().get(yi, 0)) for pi in self.expanded_polys]
 
-    def get_indicators_list(self):
+    def __get_indicators_list(self):
         allconstraints = [];
         for yi in self.mm.matrix_monos:
-            allconstraints += [self.get_indicator(yi)]
+            allconstraints += [self.__get_indicator(yi)]
         return allconstraints
 
     def get_cvxopt_Gh(self, sparsemat = True):
@@ -170,9 +247,9 @@ class LocalizingMatrix(object):
         """
         
         if sparsemat:
-            G = sparse(self.get_indicators_list(), tc='d')
+            G = sparse(self.__get_indicators_list(), tc='d')
         else:
-            G = matrix(self.get_indicators_list(), tc='d')
+            G = matrix(self.__get_indicators_list(), tc='d')
             
         h = matrix(np.zeros((self.num_row_monos,self.num_row_monos)))
         
