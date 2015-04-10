@@ -15,9 +15,10 @@ import numpy as np
 
 import sympy.polys.monomials as mn
 from sympy.polys.orderings import monomial_key
-from cvxopt import matrix, sparse
+from cvxopt import matrix, sparse, spmatrix
 import scipy.linalg
 
+from collections import defaultdict
 import util
 import ipdb
 
@@ -64,6 +65,7 @@ class MomentMatrix(object):
             print 'monomial count mismatch!'
 
         # This list correspond to the actual variables in the sdp solver
+        # probably better to generate this from row_monos rather than this...
         self.matrix_monos = sorted(mn.itermonomials(self.vars, 2*self.degree),\
                                    key=monomial_key(morder, self.vars[::-1]))
 
@@ -73,18 +75,15 @@ class MomentMatrix(object):
         for yi in self.row_monos:
             for yj in self.row_monos:
                 self.expanded_monos.append(yi*yj)
-                
+
+        # mapping from a monomial to a list of indices of
+        # where the monomial appears in the moment matrix
+        self.term_to_indices_dict = defaultdict(list)
+        for i,yi in enumerate(self.expanded_monos):
+            self.term_to_indices_dict[yi].append(i)
+
     def __str__(self):
         return 'moment matrix for %d variables: %s' % (self.num_vars, str(self.vars))
-    
-    def __get_indicator(self, yj):
-        return [-int(yi==yj) for yi in self.expanded_monos]
-
-    def __get_indicators_lists(self):
-        allconstraints = [];
-        for yi in self.matrix_monos:
-            allconstraints += [self.__get_indicator(yi)]
-        return allconstraints
 
     def __get_rowofA(self, constr):
         """
@@ -98,7 +97,14 @@ class MomentMatrix(object):
         for i,yi in enumerate(self.matrix_monos):
             Ai[i] = coefdict.get(yi,0)
         return Ai
-
+    
+    def __get_indicators_lists(self):
+        allconstraints = []
+        for yi in self.matrix_monos:
+            indices = self.term_to_indices_dict[yi]
+            allconstraints += [spmatrix(-1,[0]*len(indices), indices, size=(1,len(self.expanded_monos)), tc='d')]
+        return allconstraints
+    
     def get_cvxopt_inputs(self, constraints = None, sparsemat = True, filter = 'even'):
         """
         if provided, constraints should be a list of sympy polynomials that should be 0.
@@ -122,12 +128,12 @@ class MomentMatrix(object):
         Anp[-1,0] = 1
         bnp[-1] = 1
         b = matrix(bnp)
-        
+
         if sparsemat:
-            G = [sparse(self.__get_indicators_lists(), tc='d')]
+            G = [sparse(self.__get_indicators_lists(), tc='d').trans()]
             A = sparse(matrix(Anp))
         else:
-            G = [matrix(self.__get_indicators_lists(), tc='d')]
+            G = [matrix(self.__get_indicators_lists(), tc='d').trans()]
             A = matrix(Anp)
             
         h = [matrix(np.zeros((self.num_row_monos,self.num_row_monos)))]    
@@ -143,7 +149,7 @@ class MomentMatrix(object):
         G = self.__get_indicators_lists()
         num_inst = np.zeros(len(self.row_monos)**2)
         for i,val in enumerate(vals):
-            num_inst += -val*np.array(G[i])
+            num_inst += -val*np.array(matrix(G[i])).flatten()
         return num_inst.reshape(len(self.row_monos),len(self.row_monos))
         
         
