@@ -21,6 +21,7 @@ import scipy.linalg
 from collections import defaultdict
 import util
 import ipdb
+from cvxopt import matrix, sparse, spmatrix
 
 def monomial_filter(mono, filter='even', debug=False):
         if filter is 'even':
@@ -267,7 +268,7 @@ class LocalizingMatrix(object):
 
 if __name__=='__main__':
     # simple test to make sure things run
-    from cvxopt import matrix, sparse, spmatrix, solvers
+    from cvxopt import solvers
     print 'testing simple unimixture with a skipped observation, just to test that things run'
     x = sp.symbols('x')
     M = MomentMatrix(3, [x], morder='grevlex')
