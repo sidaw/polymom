@@ -123,6 +123,7 @@ class BorderBasis(Basis):
         idx = self.dO.index(t)
         return self._generators[idx]
 
+    @property
     def quotient_basis(self):
         return self._quotient_basis
 
