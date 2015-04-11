@@ -15,7 +15,7 @@ import numpy as np
 
 import sympy.polys.monomials as mn
 from sympy.polys.orderings import monomial_key
-from cvxopt import matrix, sparse, spmatrix
+
 import scipy.linalg
 
 from collections import defaultdict
@@ -59,11 +59,7 @@ class MomentMatrix(object):
         # the reverse here is a bit random..., but has to be done
         self.row_monos = sorted(rawmonos,\
                                  key=monomial_key(morder, self.vars[::-1]))
-        self.num_row_monos = mn.monomial_count(self.num_vars, self.degree)
         
-        if not self.num_row_monos == len(self.row_monos):
-            print 'monomial count mismatch!'
-
         # This list correspond to the actual variables in the sdp solver
         # probably better to generate this from row_monos rather than this...
         self.matrix_monos = sorted(mn.itermonomials(self.vars, 2*self.degree),\
@@ -135,8 +131,8 @@ class MomentMatrix(object):
         else:
             G = [matrix(self.__get_indicators_lists(), tc='d').trans()]
             A = matrix(Anp)
-            
-        h = [matrix(np.zeros((self.num_row_monos,self.num_row_monos)))]    
+        num_row_monos = len(self.row_monos)
+        h = [matrix(np.zeros((num_row_monos,num_row_monos)))]    
         
         return {'c':c, 'G':G, 'h':h, 'A':A, 'b':b}
 
@@ -150,8 +146,8 @@ class MomentMatrix(object):
         num_inst = np.zeros(len(self.row_monos)**2)
         for i,val in enumerate(vals):
             num_inst += -val*np.array(matrix(G[i])).flatten()
-        return num_inst.reshape(len(self.row_monos),len(self.row_monos))
-        
+        num_row_monos = len(self.row_monos)
+        return num_inst.reshape(num_row_monos,num_row_monos)
         
     def extract_solutions_lasserre(self, vals, Kmax=10, tol=1e-5):
         """
@@ -225,7 +221,6 @@ class LocalizingMatrix(object):
         rawmonos = mn.itermonomials(self.mm.vars, self.mm.degree-self.deg_g);
         self.row_monos = sorted(rawmonos,\
                                  key=monomial_key(morder, mm.vars[::-1]))
-        self.num_row_monos = len(self.row_monos)
         self.expanded_polys = [];
         for yi in self.row_monos:
             for yj in self.row_monos:
@@ -264,7 +259,33 @@ class LocalizingMatrix(object):
             G = sparse(self.__get_indicators_list(), tc='d').trans()
         else:
             G = matrix(self.__get_indicators_list(), tc='d').trans()
-            
-        h = matrix(np.zeros((self.num_row_monos,self.num_row_monos)))
+
+        num_rms = len(self.row_monos)
+        h = matrix(np.zeros((num_rms, num_rms)))
         
         return {'G':G, 'h':h}
+
+if __name__=='__main__':
+    # simple test to make sure things run
+    from cvxopt import matrix, sparse, spmatrix, solvers
+    print 'testing simple unimixture with a skipped observation, just to test that things run'
+    x = sp.symbols('x')
+    M = MomentMatrix(3, [x], morder='grevlex')
+    constrs = [x-1.5, x**2-2.5, x**4-8.5]
+    cin = M.get_cvxopt_inputs(constrs)
+
+    gs = [3-x, 3+x]
+    locmatrices = [LocalizingMatrix(M, g) for g in gs]
+    Ghs = [lm.get_cvxopt_Gh() for lm in locmatrices]
+
+    Gs=cin['G'] + [Gh['G'] for Gh in Ghs]
+    hs=cin['h'] + [Gh['h'] for Gh in Ghs]
+    
+    sol = solvers.sdp(cin['c'], Gs=cin['G'], \
+                  hs=cin['h'], A=cin['A'], b=cin['b'])
+
+    print sol['x']
+    print abs(sol['x'][3]-4.5)
+    assert(abs(sol['x'][3]-4.5) <= 1e-5)
+    print M.extract_solutions_lasserre(sol['x'], Kmax = 2)
+    print 'true values are 1 and 2'

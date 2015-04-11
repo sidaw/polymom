@@ -111,6 +111,8 @@ def test_K_by_D(K=3, D=3, pis=[0.25, 0.25, 0.5], deg=1, degobs=3):
     print M.extract_solutions_lasserre(sol['x'], Kmax=K)
     return M,sol
 
+if 
+
 Muni,sol_uni=test_unimixture()
 M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3)
 
@@ -122,11 +124,11 @@ M_mog,sol_mog=test_1dmog(mus=[5,-3], \
                           sigs=(1+np.random.rand(2)).tolist(), pis=pis, deg = 3)
                          
 M_KbyD,sol_KbyD=test_K_by_D(K=3,D=3,pis=[0.25,0.25,0.5], deg=2, degobs=3)
-M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=3,degobs=3)
+M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=3,degobs=2)
 
 Ktry = 16
 pis = np.random.rand(Ktry); pis = pis/sum(pis);
 ## # change to D=4 for a failure
-M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=Ktry,D=5,pis=pis,deg=3,degobs=4)
+M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=Ktry,D=5,pis=pis,deg=3,degobs=3)
 
 
