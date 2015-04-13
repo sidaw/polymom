@@ -23,6 +23,8 @@ import util
 import ipdb
 from cvxopt import matrix, sparse, spmatrix
 
+EPS = 1e-8
+
 
 def monomial_filter(mono, filter='even', debug=False):
         if filter is 'even':
@@ -44,17 +46,8 @@ def solve_moments_with_constraints(symbols, constraints, deg):
     """
     from cvxopt import solvers
     M = MomentMatrix(deg, symbols, morder='grevlex')
-    A,b = M.get_Ab(constraints)
-    x=scipy.linalg.lstsq(A,b)
-    mono_vals = x[0]
 
-    new_constrs = []
-    for i,mval in enumerate(mono_vals[1::]):
-        if mval > 0: # hack for now
-            new_constrs.append(M.matrix_monos[i+1]-mval)
-
-    print new_constrs
-    cin = M.get_cvxopt_inputs(new_constrs)
+    cin = M.get_cvxopt_inputs(constraints)
     sol = solvers.sdp(cin['c'], Gs=cin['G'], hs=cin['h'], A=cin['A'], b=cin['b'])
     return M, sol
 
@@ -132,11 +125,20 @@ class MomentMatrix(object):
         if constraints is not None:
             for i,constr in enumerate(constraints):
                 Anp[i,:] = self.__get_rowofA(constr)
-        
         Anp[-1,0] = 1
         bnp[-1] = 1
+
+        # Remove redundant equations
+        Q, R = scipy.linalg.qr(Anp, mode='economic')
+        Anp = R
+        bnp = Q.T.dot(bnp)
+
+        # Remove zero rows
+        idx = scipy.linalg.norm(Anp, 2, 1) > EPS
+        Anp = Anp[idx, :]
+        bnp = bnp[idx, :]
+
         return Anp, bnp
-        
         
     def get_cvxopt_inputs(self, constraints = None, sparsemat = True, filter = 'even'):
         """
