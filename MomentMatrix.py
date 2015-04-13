@@ -16,12 +16,14 @@ import numpy as np
 import sympy.polys.monomials as mn
 from sympy.polys.orderings import monomial_key
 
-import scipy.linalg
+import scipy.linalg # for schur decomp, which np doesnt have
+import numpy.linalg # for its norm, which suits us better than scipy
 
 from collections import defaultdict
 import util
 import ipdb
 from cvxopt import matrix, sparse, spmatrix
+
 
 EPS = 1e-8
 
@@ -38,7 +40,7 @@ def dict_mono_to_ind(monolist):
         dict[mono]=i
     return dict
 
-def solve_moments_with_constraints(symbols, constraints, deg):
+def solve_moments_with_constraints(symbols, constraints, deg, slack = 1e-3):
     """
     Solve using the moment matrix.
     Use @symbols with basis bounded by degree @deg.
@@ -47,7 +49,7 @@ def solve_moments_with_constraints(symbols, constraints, deg):
     from cvxopt import solvers
     M = MomentMatrix(deg, symbols, morder='grevlex')
 
-    cin = M.get_cvxopt_inputs(constraints)
+    cin = M.get_cvxopt_inputs(constraints, slack = slack)
     sol = solvers.sdp(cin['c'], Gs=cin['G'], hs=cin['h'], A=cin['A'], b=cin['b'])
     return M, sol
 
@@ -111,11 +113,18 @@ class MomentMatrix(object):
             Ai[i] = coefdict.get(yi,0)
         return Ai
     
-    def __get_indicators_lists(self):
+    def __get_indicators_lists(self, slack = 0):
         allconstraints = []
+        constterm = True
         for yi in self.matrix_monos:
             indices = self.term_to_indices_dict[yi]
-            allconstraints += [spmatrix(-1,[0]*len(indices), indices, size=(1,len(self.expanded_monos)), tc='d')]
+            # well. -1 because in cvxopt -G==PSD
+            term = spmatrix(-1,[0]*len(indices), indices, size=(1,len(self.expanded_monos)), tc='d')
+            if constterm and slack > 0:
+                diag = matrix(np.eye(len(self.row_monos)).flatten())
+                term = term - diag.trans()*slack
+                constterm = False
+            allconstraints += [term]
         return allconstraints
     
     def get_Ab(self, constraints=None):
@@ -134,15 +143,16 @@ class MomentMatrix(object):
         bnp = Q.T.dot(bnp)
 
         # Remove zero rows
-        idx = scipy.linalg.norm(Anp, 2, 1) > EPS
+        idx = np.sum(np.abs(Anp),1) > EPS
         Anp = Anp[idx, :]
         bnp = bnp[idx, :]
 
         return Anp, bnp
         
-    def get_cvxopt_inputs(self, constraints = None, sparsemat = True, filter = 'even'):
+    def get_cvxopt_inputs(self, constraints = None, sparsemat = True, filter = 'even', slack = 0):
         """
         if provided, constraints should be a list of sympy polynomials that should be 0.
+        @params - constraints: a list of sympy expressions representing the constraints in the same 
 
         """
         
@@ -155,12 +165,16 @@ class MomentMatrix(object):
         Anp,bnp = self.get_Ab(constraints)
        
         b = matrix(bnp)
+
+        indicatorlist = self.__get_indicators_lists(slack)
+        
         if sparsemat:
-            G = [sparse(self.__get_indicators_lists(), tc='d').trans()]
+            G = [sparse(indicatorlist).trans()]
             A = sparse(matrix(Anp))
         else:
-            G = [matrix(self.__get_indicators_lists(), tc='d').trans()]
+            G = [matrix(indicatorlist).trans()]
             A = matrix(Anp)
+
         num_row_monos = len(self.row_monos)
         h = [matrix(np.zeros((num_row_monos,num_row_monos)))]    
         
@@ -269,7 +283,7 @@ class LocalizingMatrix(object):
         
     def __get_indicators_list(self):
         """
-        @param - polynomial here is called g in Lasserre's notation
+        polynomial here is called g in Lasserre's notation
         and defines the underlying set K some parallel with
         MomentMatrix.__get_indicators_list. Except now expanded_monos becomes
         expanded_polys
@@ -305,7 +319,7 @@ if __name__=='__main__':
     x = sp.symbols('x')
     M = MomentMatrix(3, [x], morder='grevlex')
     constrs = [x-1.5, x**2-2.5, x**4-8.5]
-    cin = M.get_cvxopt_inputs(constrs)
+    cin = M.get_cvxopt_inputs(constrs, slack = 1e-5)
 
     gs = [3-x, 3+x]
     locmatrices = [LocalizingMatrix(M, g) for g in gs]
@@ -319,6 +333,6 @@ if __name__=='__main__':
 
     print sol['x']
     print abs(sol['x'][3]-4.5)
-    assert(abs(sol['x'][3]-4.5) <= 1e-5)
+    assert(abs(sol['x'][3]-4.5) <= 1e-3)
     print M.extract_solutions_lasserre(sol['x'], Kmax = 2)
     print 'true values are 1 and 2'
