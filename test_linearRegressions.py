@@ -41,4 +41,8 @@ def compute_moments(ys, xs, alpha, b):
     
     return avg(prod(xi**a for xi, a in zip(x, alpha)) * y**b for y, x in zip(ys, xs))
 
+def compute_exact_moments(alpha, b):
+    pass
 
+def compute_coefficients(alpha, b):
+    pass

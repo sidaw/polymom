@@ -499,3 +499,13 @@ def wishart(n, V, nsamples=1):
             out.append(thissample)
     return out
 
+def monomial(xs, betas):
+    r"""
+    Computes \prod_{i=1}^D x_i^{beta_i}
+    """
+    ret = 1.
+    for x, beta in zip(xs, betas):
+        if beta != 0:
+            ret *= (x**beta)
+    return ret
+

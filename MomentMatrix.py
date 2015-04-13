@@ -34,6 +34,19 @@ def dict_mono_to_ind(monolist):
         dict[mono]=i
     return dict
 
+def solve_moments_with_constraints(symbols, constraints, deg):
+    """
+    Solve using the moment matrix.
+    Use @symbols with basis bounded by degree @deg.
+    Also use the constraints.
+    """
+    from cvxopt import solvers
+    M = MomentMatrix(deg, symbols, morder='grevlex')
+    cin = M.get_cvxopt_inputs(constraints)
+    sol = solvers.sdp(cin['c'], Gs=cin['G'], hs=cin['h'], A=cin['A'], b=cin['b'])
+
+    return M, sol
+
 class MomentMatrix(object):
     """
     class to handle moment matrices and localizing matrices, and to
