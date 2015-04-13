@@ -23,6 +23,7 @@ import util
 import ipdb
 from cvxopt import matrix, sparse, spmatrix
 
+
 def monomial_filter(mono, filter='even', debug=False):
         if filter is 'even':
             if debug and not mono==1:
@@ -43,9 +44,18 @@ def solve_moments_with_constraints(symbols, constraints, deg):
     """
     from cvxopt import solvers
     M = MomentMatrix(deg, symbols, morder='grevlex')
-    cin = M.get_cvxopt_inputs(constraints)
-    sol = solvers.sdp(cin['c'], Gs=cin['G'], hs=cin['h'], A=cin['A'], b=cin['b'])
+    A,b = M.get_Ab(constraints)
+    x=scipy.linalg.lstsq(A,b)
+    mono_vals = x[0]
 
+    new_constrs = []
+    for i,mval in enumerate(mono_vals[1::]):
+        if mval > 0: # hack for now
+            new_constrs.append(M.matrix_monos[i+1]-mval)
+
+    print new_constrs
+    cin = M.get_cvxopt_inputs(new_constrs)
+    sol = solvers.sdp(cin['c'], Gs=cin['G'], hs=cin['h'], A=cin['A'], b=cin['b'])
     return M, sol
 
 class MomentMatrix(object):
@@ -115,6 +125,19 @@ class MomentMatrix(object):
             allconstraints += [spmatrix(-1,[0]*len(indices), indices, size=(1,len(self.expanded_monos)), tc='d')]
         return allconstraints
     
+    def get_Ab(self, constraints=None):
+        num_constrs = len(constraints) if constraints is not None else 0
+        Anp = np.zeros((num_constrs+1, self.num_matrix_monos))
+        bnp = np.zeros((num_constrs+1,1))
+        if constraints is not None:
+            for i,constr in enumerate(constraints):
+                Anp[i,:] = self.__get_rowofA(constr)
+        
+        Anp[-1,0] = 1
+        bnp[-1] = 1
+        return Anp, bnp
+        
+        
     def get_cvxopt_inputs(self, constraints = None, sparsemat = True, filter = 'even'):
         """
         if provided, constraints should be a list of sympy polynomials that should be 0.
@@ -126,19 +149,10 @@ class MomentMatrix(object):
             c = matrix(np.ones((self.num_matrix_monos, 1)))
         else:
             c = matrix([monomial_filter(yi, filter='even') for yi in self.matrix_monos], tc='d')
-            
-        num_constrs = len(constraints) if constraints is not None else 0
         
-        Anp = np.zeros((num_constrs+1, self.num_matrix_monos))
-        bnp = np.zeros((num_constrs+1,1))
-        if constraints is not None:
-            for i,constr in enumerate(constraints):
-                Anp[i,:] = self.__get_rowofA(constr)
-        
-        Anp[-1,0] = 1
-        bnp[-1] = 1
+        Anp,bnp = self.get_Ab(constraints)
+       
         b = matrix(bnp)
-
         if sparsemat:
             G = [sparse(self.__get_indicators_lists(), tc='d').trans()]
             A = sparse(matrix(Anp))
@@ -209,7 +223,10 @@ class MomentMatrix(object):
             sols[var] = [quadf(Ns[var], Q[:,j]) for j in range(bl)]
         #ipdb.set_trace()
         return sols
-        
+    
+    def pretty_print(self, sol):
+        for i,mono in enumerate(self.matrix_monos):
+            print '%s:\t%f\t' % (str(mono), sol['x'][i])
 
 
 class LocalizingMatrix(object):
