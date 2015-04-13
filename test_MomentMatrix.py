@@ -76,7 +76,7 @@ def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3):
 # deg is the highest degree of the row_monos, and degobs is the highest observed moment
 def test_K_by_D(K=3, D=3, pis=[0.25, 0.25, 0.5], deg=1, degobs=3):
     print 'testing the K by D mixture'
-    np.random.seed(0); params = np.random.randint(0,5,size=(K,D))
+    np.random.seed(0); params = np.random.randint(0,10,size=(K,D))
     print 'the true parameters (K by D): '+str(params) + '\n' + str(pis)
     xs = sp.symbols('x1:'+str(D+1))
     print xs
@@ -111,22 +111,40 @@ def test_K_by_D(K=3, D=3, pis=[0.25, 0.25, 0.5], deg=1, degobs=3):
     print M.extract_solutions_lasserre(sol['x'], Kmax=K)
     return M,sol
 
-Muni,sol_uni=test_unimixture()
-M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3)
+# K: num components, D: dimensions
+# deg is the highest degree of the row_monos, and degobs is the highest observed moment
+# I guess we should do naive ICA, sine the other version is already solved..
+def test_ICA(K=3, D=3, deg=2, degobs=4):
+    print 'testing the K by D HMM with generated parameters'
+    np.random.seed(0); A = np.random.randn((D,K))
+    print 'the true parameters (D by K): '+str(A) + '\n'
+    As = sp.symbols('A1:'+str(D+1))
+    print As
+    M = mm.MomentMatrix(deg, As, morder='grevlex')
 
-Kmog = 2;
-pis = np.random.rand(Kmog); pis = pis/sum(pis)
-mus = (-5+10*np.random.rand(2)).tolist()
-print mus
-M_mog,sol_mog=test_1dmog(mus=[5,-3], \
-                          sigs=(1+np.random.rand(2)).tolist(), pis=pis, deg = 3)
-                         
-M_KbyD,sol_KbyD=test_K_by_D(K=3,D=3,pis=[0.25,0.25,0.5], deg=2, degobs=3)
-M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=3,degobs=3)
+if __name__ == '__main__':
+    # this is  equivalent to the ICA formulation in Anandkumar
+    K_ica = 7
+    M_ICA,sol_ICA=test_K_by_D(K=K_ica,D=5,pis=[1.0/K_ica]*K_ica,deg=3,degobs=4)
 
-Ktry = 16
-pis = np.random.rand(Ktry); pis = pis/sum(pis);
-## # change to D=4 for a failure
-M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=Ktry,D=5,pis=pis,deg=3,degobs=4)
+    ipdb.set_trace()
+    
+    Muni,sol_uni=test_unimixture()
+    M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3)
+
+    Kmog = 2;
+    pis = np.random.rand(Kmog); pis = pis/sum(pis)
+    mus = (-5+10*np.random.rand(2)).tolist()
+    print mus
+    M_mog,sol_mog=test_1dmog(mus=[5,-3], \
+                              sigs=(1+np.random.rand(2)).tolist(), pis=pis, deg = 3)
+
+    M_KbyD,sol_KbyD=test_K_by_D(K=3,D=3,pis=[0.25,0.25,0.5], deg=2, degobs=3)
+    M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=3,degobs=3)
+    
+    Ktry = 15
+    pis = np.random.rand(Ktry); pis = pis/sum(pis);
+    ## # change to D=4 for a failure
+    M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=Ktry,D=5,pis=pis,deg=3,degobs=4)
 
 
