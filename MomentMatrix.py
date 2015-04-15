@@ -24,8 +24,7 @@ import util
 import ipdb
 from cvxopt import matrix, sparse, spmatrix
 
-
-EPS = 1e-8
+EPS = 1e-7
 
 
 def monomial_filter(mono, filter='even', debug=False):
@@ -143,7 +142,7 @@ class MomentMatrix(object):
         bnp = Q.T.dot(bnp)
 
         # Remove zero rows
-        idx = np.sum(np.abs(Anp),1) > EPS
+        idx = np.linalg.norm(Anp, 2, 1) > EPS
         Anp = Anp[idx, :]
         bnp = bnp[idx, :]
 
@@ -163,6 +162,11 @@ class MomentMatrix(object):
             c = matrix([monomial_filter(yi, filter='even') for yi in self.matrix_monos], tc='d')
         
         Anp,bnp = self.get_Ab(constraints)
+
+        print Anp.shape, bnp.shape
+        print scipy.linalg.lstsq(Anp, bnp)
+        _, residual, _, _ = scipy.linalg.lstsq(Anp, bnp)
+        print "Residual", residual
        
         b = matrix(bnp)
 
