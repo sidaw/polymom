@@ -11,6 +11,7 @@ import numpy as np
 import MomentMatrix as mm
 from util import hermite_coeffs
 import ipdb
+solvers.options['maxiters'] = 100
 
 def test_unimixture():
     print 'testing simple unimixture with a skipped observation'
@@ -95,7 +96,7 @@ def test_K_by_D(K=3, D=3, pis=[0.25, 0.25, 0.5], deg=1, degobs=3):
     filtered_constrs = [constr for constr in constrs[1:] if constr.as_poly().total_degree()<=degobs]
     print filtered_constrs
     cin = M.get_cvxopt_inputs(filtered_constrs)
-    sol = solvers.sdp(cin['c'], Gs=cin['G'], \
+    sol = solvers.sdp(0*cin['c'], Gs=cin['G'], \
                   hs=cin['h'], A=cin['A'], b=cin['b'])
 
     print 'Mono:\tEstimmated\tTrue'
