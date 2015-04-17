@@ -12,6 +12,7 @@ import MomentMatrix as mm
 from util import hermite_coeffs
 import ipdb
 solvers.options['maxiters'] = 100
+solvers.options['show_progress'] = True
 
 def test_unimixture():
     print 'testing simple unimixture with a skipped observation'
@@ -71,6 +72,7 @@ def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3):
             trueval = 1
         print '%s:\t%f\t%f' % (str(mono), sol['x'][i], trueval)
     print M.extract_solutions_lasserre(sol['x'], Kmax=len(mus))
+    print mm.sep_alternating_solver(M, constrs, 2, maxiter=30000)
     return M,sol
 
 # K: num components, D: dimensions, pis: the mixture coefficients
@@ -96,7 +98,7 @@ def test_K_by_D(K=3, D=3, pis=[0.25, 0.25, 0.5], deg=1, degobs=3):
     filtered_constrs = [constr for constr in constrs[1:] if constr.as_poly().total_degree()<=degobs]
     print filtered_constrs
     cin = M.get_cvxopt_inputs(filtered_constrs)
-    sol = solvers.sdp(0*cin['c'], Gs=cin['G'], \
+    sol = solvers.sdp(cin['c'], Gs=cin['G'], \
                   hs=cin['h'], A=cin['A'], b=cin['b'])
 
     print 'Mono:\tEstimmated\tTrue'
@@ -124,6 +126,8 @@ def test_ICA(K=3, D=3, deg=2, degobs=4):
     M = mm.MomentMatrix(deg, As, morder='grevlex')
 
 if __name__ == '__main__':
+    M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3)
+    
     # this is  equivalent to the ICA formulation in Anandkumar
     K_ica = 7
     M_ICA,sol_ICA=test_K_by_D(K=K_ica,D=5,pis=[1.0/K_ica]*K_ica,deg=3,degobs=4)
