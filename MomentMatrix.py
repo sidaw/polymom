@@ -57,10 +57,11 @@ def joint_alternating_solver(M, constraints, rank=2, maxiter=100, tol=1e-3):
     rowsM = len(M.row_monos)
     lenLs = rank*rowsM
     L = 10*np.random.randn(rank, len(M.row_monos))
+    La = np.sqrt(0.5)*np.array([[1, 1, 1, 1], [1, 2, 4, 8]] )
     coeffs = np.zeros((lenLs+lenys, lenLs+lenys))
     consts = np.zeros((lenLs+lenys, 1))
     
-    A,b = M.get_Ab(constraints, aug=False)
+    A,b = M.get_Ab(constraints)
     consts[-lenys:] = A.T.dot(b)
 
     for i in xrange(maxiter):
@@ -93,6 +94,7 @@ def sep_alternating_solver(M, constraints, rank=2, maxiter=100, tol=1e-3):
     lenLs = rank*rowsM
     La = np.random.randn(rank, len(M.row_monos))
     
+    
     coeffs = np.zeros((lenLs+lenys, lenLs+lenys))
     consts = np.zeros((lenLs+lenys, 1))
     
@@ -102,7 +104,7 @@ def sep_alternating_solver(M, constraints, rank=2, maxiter=100, tol=1e-3):
     A = A[:-1,1:]
     
     counts = [len(M.term_to_indices_dict[yi]) for yi in M.matrix_monos[1:]]
-    weight_fit = 10;
+    weight_fit = 1;
     for i in xrange(maxiter):
         # update y
         Q_y = A.T.dot(A) + weight_fit*np.diag(counts)
@@ -113,7 +115,7 @@ def sep_alternating_solver(M, constraints, rank=2, maxiter=100, tol=1e-3):
         y_one = np.vstack((1,y))
         # print y, La.T.dot(La)
         # update L
-        
+        #ipdb.set_trace()
         Q_l = La.dot(La.T)
         p_l = La.dot(M.numeric_instance( y_one ))
         La,_,_,_ = scipy.linalg.lstsq(Q_l, p_l)
@@ -415,6 +417,6 @@ if __name__=='__main__':
     print 'true values are 1 and 2'
 
     print 'sep_alternating_solver...'
-    y,L = sep_alternating_solver(M, constrs, 2, maxiter=10000) 
+    y,L = joint_alternating_solver(M, constrs, 2, maxiter=10000) 
     print y
     print L.T.dot(L)
