@@ -22,10 +22,9 @@ import numpy.linalg # for its norm, which suits us better than scipy
 from collections import defaultdict
 import util
 import ipdb
-from cvxopt import matrix, sparse, spmatrix
+from cvxopt import matrix, sparse, spmatrix, solvers
 
-
-EPS = 1e-8
+EPS = 1e-7
 
 
 def monomial_filter(mono, filter='even', debug=False):
@@ -52,6 +51,84 @@ def solve_moments_with_constraints(symbols, constraints, deg, slack = 1e-3):
     cin = M.get_cvxopt_inputs(constraints, slack = slack)
     sol = solvers.sdp(cin['c'], Gs=cin['G'], hs=cin['h'], A=cin['A'], b=cin['b'])
     return M, sol
+
+def joint_alternating_solver(M, constraints, rank=2, maxiter=100, tol=1e-3):
+    lenys = len(M.matrix_monos)
+    rowsM = len(M.row_monos)
+    lenLs = rank*rowsM
+    L = 10*np.random.randn(rank, len(M.row_monos))
+    La = np.sqrt(0.5)*np.array([[1, 1, 1, 1], [1, 2, 4, 8]] )
+    coeffs = np.zeros((lenLs+lenys, lenLs+lenys))
+    consts = np.zeros((lenLs+lenys, 1))
+    
+    A,b = M.get_Ab(constraints)
+    consts[-lenys:] = A.T.dot(b)
+
+    for i in xrange(maxiter):
+        smallblock = L.dot(L.T)
+        m_tl = np.kron(np.eye(rowsM), smallblock)
+        m_br = A.T.dot(A)
+        for i,yi in enumerate(M.matrix_monos):
+            indices = M.term_to_indices_dict[yi]
+            coeffs[lenLs+i,lenLs+i] = len(indices)
+            rs,cs = np.unravel_index(indices, (rowsM, rowsM))
+            for ri,ci in zip(rs,cs):
+                # partials with respect to y
+                coeffs[lenLs+i,ci*rank:ci*rank+rank] = -L[:,ri].T
+                # partials with respect to L
+                coeffs[ci*rank:ci*rank+rank, lenLs+i] = -L[:,ri]
+        coeffs[0:lenLs,0:lenLs] = m_tl
+        coeffs[lenLs::,lenLs::] += m_br
+        sol = scipy.linalg.solve(coeffs, consts)
+        
+        L = sol[0:lenLs].reshape((rowsM, rank)).T
+        y = sol[-lenys:]
+        obj = scipy.linalg.norm(L.T.dot(L) - M.numeric_instance(y)) + scipy.linalg.norm(A.dot(y)-b)
+        print obj
+    ipdb.set_trace()
+    # need to know which matrix_mono is in each location
+
+def sep_alternating_solver(M, constraints, rank=2, maxiter=100, tol=1e-3):
+    lenys = len(M.matrix_monos)
+    rowsM = len(M.row_monos)
+    lenLs = rank*rowsM
+    La = np.random.randn(rank, len(M.row_monos))
+    
+    
+    coeffs = np.zeros((lenLs+lenys, lenLs+lenys))
+    consts = np.zeros((lenLs+lenys, 1))
+    
+    A,b = M.get_Ab(constraints, cvxoptmode = False)
+    
+    b = -A[:-1,0][:,np.newaxis]
+    A = A[:-1,1:]
+    
+    counts = [len(M.term_to_indices_dict[yi]) for yi in M.matrix_monos[1:]]
+    weight_fit = 1;
+    for i in xrange(maxiter):
+        # update y
+        Q_y = A.T.dot(A) + weight_fit*np.diag(counts)
+        currentM = La.T.dot(La)
+        weights = [sum(currentM.flatten()[M.term_to_indices_dict[yi]]) for yi in M.matrix_monos[1:]]
+        p_y = A.T.dot(b) + weight_fit*np.array(weights)[:,np.newaxis]
+        y,_,_,_ = scipy.linalg.lstsq(Q_y, p_y)
+        y_one = np.vstack((1,y))
+        # print y, La.T.dot(La)
+        # update L
+        #ipdb.set_trace()
+        Q_l = La.dot(La.T)
+        p_l = La.dot(M.numeric_instance( y_one ))
+        La,_,_,_ = scipy.linalg.lstsq(Q_l, p_l)
+        
+        if i % 50 == 0:
+            obj = scipy.linalg.norm(La.T.dot(La) - M.numeric_instance(y_one))**2 + scipy.linalg.norm(A.dot(y)-b)**2
+            print i,obj
+
+    return y,La
+    # need to know which matrix_mono is in each location
+    
+    
+    
 
 class MomentMatrix(object):
     """
@@ -108,7 +185,7 @@ class MomentMatrix(object):
         """
         Ai = np.zeros(self.num_matrix_monos)
         coefdict = constr.as_coefficients_dict();
-        # you can build a dict and do this faster, but no point since we solve SDP later
+        
         for i,yi in enumerate(self.matrix_monos):
             Ai[i] = coefdict.get(yi,0)
         return Ai
@@ -127,25 +204,27 @@ class MomentMatrix(object):
             allconstraints += [term]
         return allconstraints
     
-    def get_Ab(self, constraints=None):
+    def get_Ab(self, constraints=None, cvxoptmode=True):
         num_constrs = len(constraints) if constraints is not None else 0
         Anp = np.zeros((num_constrs+1, self.num_matrix_monos))
         bnp = np.zeros((num_constrs+1,1))
         if constraints is not None:
             for i,constr in enumerate(constraints):
                 Anp[i,:] = self.__get_rowofA(constr)
+
         Anp[-1,0] = 1
         bnp[-1] = 1
-
+    
         # Remove redundant equations
-        Q, R = scipy.linalg.qr(Anp, mode='economic')
-        Anp = R
-        bnp = Q.T.dot(bnp)
+        if cvxoptmode:
+            Q, R = scipy.linalg.qr(Anp, mode='economic')
+            Anp = R
+            bnp = Q.T.dot(bnp)
 
-        # Remove zero rows
-        idx = np.sum(np.abs(Anp),1) > EPS
-        Anp = Anp[idx, :]
-        bnp = bnp[idx, :]
+            # Remove zero rows
+            idx = np.sum(abs(Anp), 1) > EPS
+            Anp = Anp[idx, :]
+            bnp = bnp[idx, :]
 
         return Anp, bnp
         
@@ -156,14 +235,14 @@ class MomentMatrix(object):
 
         """
         
-        # Many for what c might be, not yet determined really
+        # Many optionals for what c might be, not yet determined really
         if filter is None:
             c = matrix(np.ones((self.num_matrix_monos, 1)))
         else:
             c = matrix([monomial_filter(yi, filter='even') for yi in self.matrix_monos], tc='d')
         
         Anp,bnp = self.get_Ab(constraints)
-       
+        #_, residual, _, _ = scipy.linalg.lstsq(Anp, bnp)
         b = matrix(bnp)
 
         indicatorlist = self.__get_indicators_lists(slack)
@@ -336,3 +415,8 @@ if __name__=='__main__':
     assert(abs(sol['x'][3]-4.5) <= 1e-3)
     print M.extract_solutions_lasserre(sol['x'], Kmax = 2)
     print 'true values are 1 and 2'
+
+    print 'sep_alternating_solver...'
+    y,L = joint_alternating_solver(M, constrs, 2, maxiter=10000) 
+    print y
+    print L.T.dot(L)
