@@ -509,3 +509,29 @@ def monomial(xs, betas):
             ret *= (x**beta)
     return ret
 
+def project_nullspace(A, b, x, randomize = 0):
+    """
+    Project a vector x onto the space of y where Ay=b
+    not efficient if you always project the same A and b
+    """
+    y0,__,__,__ = scipy.linalg.lstsq(A,b)
+    xnorm = x - y0
+    U,S,V = scipy.linalg.svd(A)
+    rank = np.sum(S>eps)
+    B = V[rank:, :]
+    
+    noise = 0
+    if randomize>0:
+        dist = norm(V[0:rank,:].dot(xnorm))
+        noise = B.T.dot(np.random.randn(B.shape[0],1))
+    #ipdb.set_trace()
+    return B.T.dot(B.dot(xnorm)) + y0 + noise
+    
+def test_project_nullspace():
+    A = np.array([[1,0,-1],[1,1,0]])
+    # b = A [1 0 0], B = [1,-1,1], P = [1,1,0]
+    b = np.array([1,1])[:,np.newaxis]
+    print 'should stay fixed'
+    print projectOntoNullspace(A,b,np.array([2,-1,1])[:, np.newaxis])
+    print 'should also go to [2,-1,1]'
+    print projectOntoNullspace(A,b,np.array([3,0,1])[:, np.newaxis])

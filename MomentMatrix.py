@@ -352,6 +352,6 @@ if __name__=='__main__':
     import MomentMatrixSolver
     print 'joint_alternating_solver...'
     #y,L = MomentMatrixSolver.sgd_solver(M, constrs, 2, maxiter=101, eta = 0.001)
-    y,L = MomentMatrixSolver.alternating_sgd_solver(M, constrs, 2, maxiter=10000, eta = 0.001) 
+    y,L = MomentMatrixSolver.projection_solver(M, constrs, 2, maxiter=10000) 
     print y
     print L.T.dot(L)

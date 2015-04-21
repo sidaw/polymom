@@ -14,6 +14,43 @@ from cvxopt import matrix, sparse, spmatrix, solvers
 
 EPS = 1e-7
 
+def projection_solver(M, constraints, rank=2, maxiter=100, tol=1e-6):
+    """
+    does projection, so that L.T L is closest to M(y)
+    and y is the projection of cloest to L.T L what satisfies the contraints
+    any fixed point is a valid solution
+    """
+    lenys = len(M.matrix_monos)
+    rowsM = len(M.row_monos)
+    lenLs = rank*rowsM
+    L = np.random.randn(rank, len(M.row_monos))
+    #L = np.array([[1,1,1,1],[1,2,4,8]])/np.sqrt(2)
+    Bf = M.get_Bflat()
+    
+    A,b = M.get_Ab(constraints, cvxoptmode = False)
+
+    weightone = 1
+    A = A*weightone; b = b*weightone
+    
+    for i in xrange(maxiter):
+        yL = Bf.dot(L.T.dot(L).flatten()[:, np.newaxis])/np.sum(Bf,1)[:,np.newaxis]
+        y = util.project_nullspace(A,b,yL, randomize =0/np.sqrt(i+100))
+        My = M.numeric_instance(y)
+
+        objyconstrs = scipy.linalg.norm(L.T.dot(L) - M.numeric_instance(y)) + scipy.linalg.norm(A.dot(y)-b)
+        
+        U,D,V=scipy.linalg.svd(My)
+        L = V[0:rank,:]*np.sqrt(D[0:rank, np.newaxis])
+        
+        objprojL = scipy.linalg.norm(L.T.dot(L) - M.numeric_instance(y)) + scipy.linalg.norm(A.dot(y)-b)
+        print '%d:\t%f\t%f' % (i, objyconstrs, objprojL)
+        if objprojL < tol:
+            break
+    return y,L
+    
+    #ipdb.set_trace()
+    # need to know which matrix_mono is in each location
+    
 def joint_alternating_solver(M, constraints, rank=2, maxiter=100, tol=1e-3):
     lenys = len(M.matrix_monos)
     rowsM = len(M.row_monos)
@@ -141,12 +178,12 @@ def alternating_sgd_solver(M, constraints, rank=2, maxiter=100, tol=1e-3, eta = 
 
     return y,La
 
-def alternating_solver(M, constraints, rank=2, maxiter=100, tol=1e-3):
+def alternating_solver(M, constraints, rank=2, maxiter=100, tol=1e-3, eta=0.001):
     lenys = len(M.matrix_monos)
     rowsM = len(M.row_monos)
     lenLs = rank*rowsM
     La = np.random.randn(rank, len(M.row_monos))
-    #La = np.array([[1,1,1,1],[1,2,4,8]])/np.sqrt(2)
+    #La = np.array([[1,1,1,1],[1,2,4,8]])/np.sqrt(2) + np.random.randn(rank, len(M.row_monos))*0.01;
     
     coeffs = np.zeros((lenLs+lenys, lenLs+lenys))
     consts = np.zeros((lenLs+lenys, 1))
@@ -164,7 +201,10 @@ def alternating_solver(M, constraints, rank=2, maxiter=100, tol=1e-3):
         currentM = La.T.dot(La)
         weights = [sum(currentM.flatten()[M.term_to_indices_dict[yi]]) for yi in M.matrix_monos[1:]]
         p_y = A.T.dot(b) + weight_fit*np.array(weights)[:,np.newaxis]
-        y,_,_,_ = scipy.linalg.lstsq(Q_y, p_y)
+        if i==0:
+            y,_,_,_ = scipy.linalg.lstsq(Q_y, p_y)
+        
+        y = y - eta * (Q_y.dot(y) - p_y)
         y_one = np.vstack((1,y))
         # print y, La.T.dot(La)
         # update L
@@ -172,7 +212,11 @@ def alternating_solver(M, constraints, rank=2, maxiter=100, tol=1e-3):
         Q_l = La.dot(La.T)
         p_l = La.dot(M.numeric_instance( y_one ))
         La,_,_,_ = scipy.linalg.lstsq(Q_l, p_l)
+        My = M.numeric_instance( y_one )
+        #ipdb.set_trace()
         
+        U,D,V=scipy.linalg.svd(My)
+        La = V[0:rank,:]*np.sqrt(D[0:rank, np.newaxis])
         if i % 50 == 0:
             obj = scipy.linalg.norm(La.T.dot(La) - M.numeric_instance(y_one))**2 + scipy.linalg.norm(A.dot(y)-b)**2
             print i,obj

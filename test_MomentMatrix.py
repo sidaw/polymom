@@ -72,7 +72,8 @@ def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3):
             trueval = 1
         print '%s:\t%f\t%f' % (str(mono), sol['x'][i], trueval)
     print M.extract_solutions_lasserre(sol['x'], Kmax=len(mus))
-    print mm.sep_alternating_solver(M, constrs, 2, maxiter=30000)
+    import MomentMatrixSolver as mmsolver
+    print mmsolver.alternating_solver(M, constrs, 2, maxiter=30000)
     return M,sol
 
 # K: num components, D: dimensions, pis: the mixture coefficients
