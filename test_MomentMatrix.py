@@ -11,8 +11,11 @@ import numpy as np
 import MomentMatrix as mm
 from util import hermite_coeffs
 import ipdb
-solvers.options['maxiters'] = 100
+solvers.options['maxiters'] = 300
 solvers.options['show_progress'] = True
+solvers.options['feastol'] = 1e-6
+solvers.options['abstol'] = 1e-5
+solvers.options['reltol'] = 1e-7
 
 def test_unimixture():
     print 'testing simple unimixture with a skipped observation'
@@ -30,7 +33,7 @@ def test_unimixture():
     return M,sol
 
 
-def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3):
+def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3, obsdeg = 6):
     print 'testing 1d mixture of Gaussians'
     # constraints on parameters here
     
@@ -38,7 +41,7 @@ def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3):
     mu,sig = sp.symbols('mu,sigma')
     M = mm.MomentMatrix(deg, [mu, sig], morder='grevlex')
 
-    num_constrs = 7; # so observe num_constrs-1 moments
+    num_constrs = obsdeg + 1; # so observe num_constrs-1 moments
     H = abs(hermite_coeffs(num_constrs))
     constrs = [0]*num_constrs
     
@@ -52,8 +55,8 @@ def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3):
     print constrs
     cin = M.get_cvxopt_inputs(constrs[1:])
 
-    gs = [sig-1, 30-mu**2, 5-sig**2]
-    #gs = [sig-1]
+    gs = [sig-0.2, 3-sig, sig+3, 6-mu, mu+6]
+    #gs = [sig-0]
     locmatrices = [mm.LocalizingMatrix(M, g) for g in gs]
     Ghs = [lm.get_cvxopt_Gh() for lm in locmatrices]
 
@@ -72,8 +75,8 @@ def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3):
             trueval = 1
         print '%s:\t%f\t%f' % (str(mono), sol['x'][i], trueval)
     print M.extract_solutions_lasserre(sol['x'], Kmax=len(mus))
-    import MomentMatrixSolver as mmsolver
-    print mmsolver.alternating_solver(M, constrs, 2, maxiter=30000)
+    #import MomentMatrixSolver as mmsolver
+    #print mmsolver.alternating_solver(M, constrs, 2, maxiter=30000)
     return M,sol
 
 # K: num components, D: dimensions, pis: the mixture coefficients
@@ -127,24 +130,28 @@ def test_ICA(K=3, D=3, deg=2, degobs=4):
     M = mm.MomentMatrix(deg, As, morder='grevlex')
 
 if __name__ == '__main__':
-    M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3)
-    
+    Kmog = 2;
+    pis = np.random.rand(Kmog); pis = pis/sum(pis)
+    mus = (-5+5*np.random.rand(2)).tolist()
+    sigs = (0.2+2*np.random.rand(2)).tolist()
+    M_mog,sol_mog=test_1dmog(mus=mus, \
+                              sigs=sigs, pis=pis, deg = 4, obsdeg = 8)
+    print sigs,mus
+    import sys; sys.exit(0)
+    ipdb.set_trace()
     # this is  equivalent to the ICA formulation in Anandkumar
+    M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3)
+    M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[2., np.sqrt(3.)], pis=[0.4, 0.6], deg = 3)
+  
     K_ica = 7
     M_ICA,sol_ICA=test_K_by_D(K=K_ica,D=5,pis=[1.0/K_ica]*K_ica,deg=3,degobs=4)
-
-    ipdb.set_trace()
+    
+    #ipdb.set_trace()
     
     Muni,sol_uni=test_unimixture()
     M_mog,sol_mog=test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3)
 
-    Kmog = 2;
-    pis = np.random.rand(Kmog); pis = pis/sum(pis)
-    mus = (-5+10*np.random.rand(2)).tolist()
-    print mus
-    M_mog,sol_mog=test_1dmog(mus=[5,-3], \
-                              sigs=(1+np.random.rand(2)).tolist(), pis=pis, deg = 3)
-
+    
     M_KbyD,sol_KbyD=test_K_by_D(K=3,D=3,pis=[0.25,0.25,0.5], deg=2, degobs=3)
     M_KbyD_underdet,sol_KbyD_underdet=test_K_by_D(K=7,D=5,pis=[0.1,0.1,0.1,0.2,0.2,0.2,0.1],deg=3,degobs=3)
     
