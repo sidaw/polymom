@@ -331,7 +331,16 @@ if __name__=='__main__':
     x = sp.symbols('x')
     M = MomentMatrix(3, [x], morder='grevlex')
     constrs = [x-1.5, x**2-2.5, x**4-8.5]
+    #constrs = [x-1.5, x**2-2.5, x**3-4.5, x**4-8.5]
     cin = M.get_cvxopt_inputs(constrs, slack = 1e-5)
+
+    import MomentMatrixSolver
+    print 'joint_alternating_solver...'
+    #y,L = MomentMatrixSolver.sgd_solver(M, constrs, 2, maxiter=101, eta = 0.001)
+    y,X = MomentMatrixSolver.convex_projection_solver(M, constrs, 2, maxiter=2000) 
+    print y
+    print X
+
 
     gs = [3-x, 3+x]
     locmatrices = [LocalizingMatrix(M, g) for g in gs]
@@ -349,9 +358,4 @@ if __name__=='__main__':
     print M.extract_solutions_lasserre(sol['x'], Kmax = 2)
     print 'true values are 1 and 2'
 
-    import MomentMatrixSolver
-    print 'joint_alternating_solver...'
-    #y,L = MomentMatrixSolver.sgd_solver(M, constrs, 2, maxiter=101, eta = 0.001)
-    y,L = MomentMatrixSolver.projection_solver(M, constrs, 2, maxiter=10000) 
-    print y
-    print L.T.dot(L)
+   

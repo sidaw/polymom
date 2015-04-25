@@ -55,16 +55,25 @@ def test_1dmog(mus=[-2., 2.], sigs=[1., np.sqrt(3.)], pis=[0.5, 0.5], deg = 3, o
     print constrs
     cin = M.get_cvxopt_inputs(constrs[1:])
 
-    gs = [sig-0.2, 3-sig, sig+3, 6-mu, mu+6]
-    #gs = [sig-0]
+    gs = [sig-0.2, 5-sig, sig+5, 10-mu, mu+10]
+    gs = [sig-0.2]
     locmatrices = [mm.LocalizingMatrix(M, g) for g in gs]
     Ghs = [lm.get_cvxopt_Gh() for lm in locmatrices]
 
-    Gs=cin['G'] + [Gh['G'] for Gh in Ghs]
-    hs=cin['h'] + [Gh['h'] for Gh in Ghs]
+    Gs=cin['G'] # + [Gh['G'] for Gh in Ghs]
+    hs=cin['h'] #+ [Gh['h'] for Gh in Ghs]
     
     sol = solvers.sdp(cin['c'],Gs=Gs, \
                   hs=hs, A=cin['A'], b=cin['b'])
+
+    
+    Q = cin['A'].T*cin['A']
+    weight = 1;
+    dims = {}
+    dims['l'] = 0; dims['q'] = []; dims['s'] = [len(M.row_monos)]
+    ipdb.set_trace()
+    sol = solvers.coneqp(Q*weight, cin['A'].T*cin['b']*weight+cin['c']*np.random.randn(cin['c'].size),G=Gs[0], \
+                  h=hs[0][:], dims = dims, A=cin['A'], b=cin['b'])
 
     for i,mono in enumerate(M.matrix_monos):
         trueval = 0;
@@ -135,7 +144,7 @@ if __name__ == '__main__':
     mus = (-5+5*np.random.rand(2)).tolist()
     sigs = (0.2+2*np.random.rand(2)).tolist()
     M_mog,sol_mog=test_1dmog(mus=mus, \
-                              sigs=sigs, pis=pis, deg = 4, obsdeg = 8)
+                              sigs=sigs, pis=pis, deg = 5, obsdeg = 7)
     print sigs,mus
     import sys; sys.exit(0)
     ipdb.set_trace()
