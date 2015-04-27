@@ -12,7 +12,7 @@ and cvxopt
 #from __future__ import division
 import sympy as sp
 import numpy as np
-
+from cvxopt import matrix, sparse, spmatrix
 import sympy.polys.monomials as mn
 from sympy.polys.orderings import monomial_key
 
@@ -22,36 +22,8 @@ import numpy.linalg # for its norm, which suits us better than scipy
 from collections import defaultdict
 import util
 import ipdb
-from cvxopt import matrix, sparse, spmatrix, solvers
 
 EPS = 1e-7
-
-
-def monomial_filter(mono, filter='even', debug=False):
-        if filter is 'even':
-            if debug and not mono==1:
-                print str(mono) + ':\t' + str(all([(i%2)==0 for i in mono.as_poly().degree_list()]))
-            return 1 if mono==1 else int(all([i%2==0 for i in mono.as_poly().degree_list()]))
-
-def dict_mono_to_ind(monolist):
-    dict = {}
-    for i,mono in enumerate(monolist):
-        dict[mono]=i
-    return dict
-
-def solve_moments_with_constraints(symbols, constraints, deg, slack = 1e-3):
-    """
-    Solve using the moment matrix.
-    Use @symbols with basis bounded by degree @deg.
-    Also use the constraints.
-    """
-    from cvxopt import solvers
-    M = MomentMatrix(deg, symbols, morder='grevlex')
-
-    cin = M.get_cvxopt_inputs(constraints, slack = slack)
-    sol = solvers.sdp(cin['c'], Gs=cin['G'], hs=cin['h'], A=cin['A'], b=cin['b'])
-    return M, sol
-
 
 class MomentMatrix(object):
     """
@@ -61,11 +33,12 @@ class MomentMatrix(object):
     highest degree monomial in the entire moment matrix would be twice
     the provided degree.
     """
-    def __init__(self, degree, variables, morder='grevlex'):
+    def __init__(self, degree, variables, morder='grevlex', monos=None):
         """
         @param degree - highest degree of the first row/column of the
         moment matrix
         @param variables - list of sympy symbols
+        @param morder the monomial order lex, grlex, grevlex, ilex, igrlex, igrevlex
         """
         self.degree = degree
         self.vars = variables
@@ -73,23 +46,26 @@ class MomentMatrix(object):
 
         # this object is a list of all monomials
         # in num_vars variables up to degree degree
-        rawmonos = mn.itermonomials(self.vars, self.degree)
+        if monos is None:
+            rawmonos = mn.itermonomials(self.vars, self.degree)
+        else:
+            rawmonos = monos
 
-        # the reverse here is a bit random..., but has to be done
+        # the reverse here is a bit random..., but has to be done.
+        # also try grlex sometimes
         self.row_monos = sorted(rawmonos,\
                                  key=monomial_key(morder, self.vars[::-1]))
-        
-        # This list correspond to the actual variables in the sdp solver
-        # probably better to generate this from row_monos rather than this...
-        self.matrix_monos = sorted(mn.itermonomials(self.vars, 2*self.degree),\
-                                   key=monomial_key(morder, self.vars[::-1]))
 
-        self.num_matrix_monos = len(self.matrix_monos)
-
+        # expanded monos is the flattened moment matrix itself
         self.expanded_monos = []
         for yi in self.row_monos:
             for yj in self.row_monos:
                 self.expanded_monos.append(yi*yj)
+
+        # This list correspond to the actual variables in the sdp solver
+        self.matrix_monos = sorted(set(self.expanded_monos),\
+                                   key=monomial_key(morder, self.vars[::-1]))
+        self.num_matrix_monos = len(self.matrix_monos)
 
         # mapping from a monomial to a list of indices of
         # where the monomial appears in the moment matrix
@@ -113,30 +89,27 @@ class MomentMatrix(object):
             Ai[i] = coefdict.get(yi,0)
         return Ai
     
-    def __get_indicators_lists(self, slack = 0):
+    def get_LMI_coefficients(self):
         allconstraints = []
         constterm = True
         for yi in self.matrix_monos:
             indices = self.term_to_indices_dict[yi]
-            # well. -1 because in cvxopt -G==PSD
             term = spmatrix(-1,[0]*len(indices), indices, size=(1,len(self.expanded_monos)), tc='d')
-            if constterm and slack > 0:
-                diag = matrix(np.eye(len(self.row_monos)).flatten())
-                term = term - diag.trans()*slack
-                constterm = False
             allconstraints += [term]
         return allconstraints
 
     def get_Bflat(self):
+        """ M_flattened = sum_i y_i Bflat_i
+        """
         rowsM = len(self.row_monos)
         lenys = len(self.matrix_monos)
+        # consider using sparse Bf
         Bf = np.zeros((lenys, rowsM*rowsM))
         for i,yi in enumerate(self.matrix_monos):
             indices = self.term_to_indices_dict[yi]
             Bf[i, indices] = 1
         return Bf
         
-    
     def get_Ab(self, constraints=None, cvxoptmode=True):
         num_constrs = len(constraints) if constraints is not None else 0
         Anp = np.zeros((num_constrs+1, self.num_matrix_monos))
@@ -161,98 +134,23 @@ class MomentMatrix(object):
 
         return Anp, bnp
         
-    def get_cvxopt_inputs(self, constraints = None, sparsemat = True, filter = 'even', slack = 0):
+    def numeric_instance(self, ys):
         """
-        if provided, constraints should be a list of sympy polynomials that should be 0.
-        @params - constraints: a list of sympy expressions representing the constraints in the same 
-
+        assign the matrix_monos ys and return an np matrix
         """
+        assert(len(ys)==len(self.matrix_monos))
         
-        # Many optionals for what c might be, not yet determined really
-        if filter is None:
-            c = matrix(np.ones((self.num_matrix_monos, 1)))
-        else:
-            c = matrix([monomial_filter(yi, filter='even') for yi in self.matrix_monos], tc='d')
-        
-        Anp,bnp = self.get_Ab(constraints)
-        #_, residual, _, _ = scipy.linalg.lstsq(Anp, bnp)
-        b = matrix(bnp)
-
-        indicatorlist = self.__get_indicators_lists(slack)
-        
-        if sparsemat:
-            G = [sparse(indicatorlist).trans()]
-            A = sparse(matrix(Anp))
-        else:
-            G = [matrix(indicatorlist).trans()]
-            A = matrix(Anp)
-
-        num_row_monos = len(self.row_monos)
-        h = [matrix(np.zeros((num_row_monos,num_row_monos)))]    
-        
-        return {'c':c, 'G':G, 'h':h, 'A':A, 'b':b}
-
-    def numeric_instance(self, vals):
-        """
-        assign the matrix_monos vals and return an np matrix
-        """
-        assert(len(vals)==len(self.matrix_monos))
-        
-        G = self.__get_indicators_lists()
+        G = self.get_LMI_coefficients()
         num_inst = np.zeros(len(self.row_monos)**2)
-        for i,val in enumerate(vals):
+        for i,val in enumerate(ys):
             num_inst += -val*np.array(matrix(G[i])).flatten()
         num_row_monos = len(self.row_monos)
         return num_inst.reshape(num_row_monos,num_row_monos)
-        
-    def extract_solutions_lasserre(self, vals, Kmax=10, tol=1e-5):
-        """
-        extract solutions via (unstable) row reduction described by Lassarre and used in gloptipoly
-        """
-        M = self.numeric_instance(vals)
-        Us,Sigma,Vs=np.linalg.svd(M)
-        #
-        #ipdb.set_trace()
-        count = min(Kmax,sum(Sigma>tol))
-        # now using Lassarre's notation in the extraction section of
-        # "Moments, Positive Polynomials and their Applications"
-        T,Ut = util.srref(Vs[0:count,:])
-        print 'the next biggest eigenvalue we are losing is %f' % Sigma[count]
-        # inplace!
-        util.row_normalize_leadingone(Ut)
-        
-        couldbes = np.where(Ut>0.9)
-        ind_leadones = np.zeros(Ut.shape[0], dtype=np.int)
-        for j in reversed(range(len(couldbes[0]))):
-            ind_leadones[couldbes[0][j]] = couldbes[1][j]
-        
-        basis = [self.row_monos[i] for i in ind_leadones]
-        dict_row_monos = dict_mono_to_ind(self.row_monos)
-        
-        #ipdb.set_trace()
-        Ns = {}
-        bl = len(basis)
-        # create multiplication matrix for each variable
-        for var in self.vars:
-            Nvar = np.zeros((bl,bl))
-            for i,b in enumerate(basis):
-                Nvar[:,i] = Ut[ :,dict_row_monos[var*b] ]
-            Ns[var] = Nvar
 
-        N = np.zeros((bl,bl))
-        for var in Ns:
-            N+=Ns[var]*np.random.randn()
-        T,Q=scipy.linalg.schur(N)
-
-        sols = {}
-        
-        quadf = lambda A, x : np.dot(x, np.dot(A,x))
-        for var in self.vars:
-            sols[var] = [quadf(Ns[var], Q[:,j]) for j in range(bl)]
-        #ipdb.set_trace()
-        return sols
-    
     def pretty_print(self, sol):
+        """
+        print the moment matrix in a nice format?
+        """
         for i,mono in enumerate(self.matrix_monos):
             print '%s:\t%f\t' % (str(mono), sol['x'][i])
 
@@ -276,7 +174,9 @@ class LocalizingMatrix(object):
         self.deg_g = poly_g.as_poly().total_degree()
         #there is no point to a constant localization matrix,
         #and it will cause crash because how sympy handles 1
-        assert(self.deg_g>0)         
+        assert(self.deg_g>0)
+        
+        # change this to be everything still in mm.monos post multiplication 
         rawmonos = mn.itermonomials(self.mm.vars, self.mm.degree-self.deg_g);
         self.row_monos = sorted(rawmonos,\
                                  key=monomial_key(morder, mm.vars[::-1]))
@@ -293,11 +193,11 @@ class LocalizingMatrix(object):
                 coeff = coeffdict[mono]
                 self.term_to_indices_dict[mono].append( (i,float(coeff)) )
         
-    def __get_indicators_list(self):
+    def get_LMI_coefficients(self):
         """
         polynomial here is called g in Lasserre's notation
         and defines the underlying set K some parallel with
-        MomentMatrix.__get_indicators_list. Except now expanded_monos becomes
+        MomentMatrix.get_LMI_coefficients. Except now expanded_monos becomes
         expanded_polys
         """
         allconstraints = []
@@ -308,21 +208,7 @@ class LocalizingMatrix(object):
                                         indices, size=(1,len(self.expanded_polys)), tc='d')]
         return allconstraints
 
-    def get_cvxopt_Gh(self, sparsemat = True):
-        """
-        get the G and h corresponding to this localizing matrix
-
-        """
-        
-        if sparsemat:
-            G = sparse(self.__get_indicators_list(), tc='d').trans()
-        else:
-            G = matrix(self.__get_indicators_list(), tc='d').trans()
-
-        num_rms = len(self.row_monos)
-        h = matrix(np.zeros((num_rms, num_rms)))
-        
-        return {'G':G, 'h':h}
+    
 
 if __name__=='__main__':
     # simple test to make sure things run
@@ -332,30 +218,8 @@ if __name__=='__main__':
     M = MomentMatrix(3, [x], morder='grevlex')
     constrs = [x-1.5, x**2-2.5, x**4-8.5]
     #constrs = [x-1.5, x**2-2.5, x**3-4.5, x**4-8.5]
-    cin = M.get_cvxopt_inputs(constrs, slack = 1e-5)
-
-    import MomentMatrixSolver
-    print 'joint_alternating_solver...'
-    #y,L = MomentMatrixSolver.sgd_solver(M, constrs, 2, maxiter=101, eta = 0.001)
-    y,X = MomentMatrixSolver.convex_projection_solver(M, constrs, 2, maxiter=2000) 
-    print y
-    print X
-
+    Ab = M.get_Ab(constrs)
 
     gs = [3-x, 3+x]
     locmatrices = [LocalizingMatrix(M, g) for g in gs]
     Ghs = [lm.get_cvxopt_Gh() for lm in locmatrices]
-
-    Gs=cin['G'] + [Gh['G'] for Gh in Ghs]
-    hs=cin['h'] + [Gh['h'] for Gh in Ghs]
-    
-    sol = solvers.sdp(cin['c'], Gs=cin['G'], \
-                  hs=cin['h'], A=cin['A'], b=cin['b'])
-
-    print sol['x']
-    print abs(sol['x'][3]-4.5)
-    assert(abs(sol['x'][3]-4.5) <= 1e-3)
-    print M.extract_solutions_lasserre(sol['x'], Kmax = 2)
-    print 'true values are 1 and 2'
-
-   
