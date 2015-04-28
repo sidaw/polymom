@@ -17,7 +17,7 @@ from util import permutation, wishart
 from util import hermite_coeffs
 import sympy as sp
 
-from itertools import combinations_with_replacement
+from itertools import combinations_with_replacement, combinations
 from collections import Counter
 # import spectral.linalg as sl
 
@@ -167,8 +167,16 @@ class GaussianMixtureModel( Model ):
         if means == "hypercube":
             # Place means at the vertices of the hypercube
             M = zeros( (d, k) )
-            for i in xrange(k):
-                M[i, i] = 1.0
+            if k <= 2**d:
+                # the minimum number of ones needed to fill k of them
+                numones = int(sc.ceil(sc.log(k)/sc.log(d)))
+                allinds = combinations(range(d), numones)
+                for i,inds in enumerate(allinds):
+                    if i == k: break
+                    M[inds, i] = 1
+            else:
+                raise NotImplementedError
+                
         elif means == "random":
             M = 2*sc.randn( d, k )
         elif isinstance( means, sc.ndarray ):
@@ -184,7 +192,7 @@ class GaussianMixtureModel( Model ):
             # Using 1/gamma instead of inv_gamma
             sigmas = []
             for i in xrange(k):
-                sigmak = [10/sc.random.gamma(0.5/gaussian_precision) for i in xrange(d)]
+                sigmak = [1./sc.random.gamma(0.1/gaussian_precision) for i in xrange(d)]
                 sigmas = sigmas + [ sc.diag(sigmak) ]
             S = array( sigmas )
         elif isinstance( cov, sc.ndarray ):
