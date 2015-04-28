@@ -157,7 +157,7 @@ class GaussianMixtureModel( Model ):
             for i in xrange(k):
                 M[i, i] = 1.0
         elif means == "random":
-            M = sc.randn( d, k )
+            M = 2*sc.randn( d, k )
         elif isinstance( means, sc.ndarray ):
             M = means
         else:
@@ -169,8 +169,11 @@ class GaussianMixtureModel( Model ):
             S = array( [ sigma * eye( d ) for i in xrange( k ) ] )
         elif cov == "diagonal":
             # Using 1/gamma instead of inv_gamma
-            sigmas = [1/sc.random.gamma(1/gaussian_precision) for i in xrange(d)]
-            S = array( [ diag(sigmas) for i in xrange( k ) ] )
+            sigmas = []
+            for i in xrange(k):
+                sigmak = [10/sc.random.gamma(0.5/gaussian_precision) for i in xrange(d)]
+                sigmas = sigmas + [ sc.diag(sigmak) ]
+            S = array( sigmas )
         elif isinstance( cov, sc.ndarray ):
             S = cov
         elif cov == "random":
