@@ -25,11 +25,16 @@ import ipdb
 
 EPS = 1e-7
 
+class Measure(object):
+    def __init__():
+        print 'measure'
+        
 class MomentMatrix(object):
     """
-    class to handle moment matrices and localizing matrices, and to
-    produce the right outputs for the cvxopt SDP solver degree: max
-    degree of the basic monomials corresponding to each row, so the
+    class to handle moment matrices and localizing matrices.
+    Contains functions to process constraints
+    
+    degree: max degree of the basic monomials corresponding to each row, so the
     highest degree monomial in the entire moment matrix would be twice
     the provided degree.
     """
@@ -88,15 +93,18 @@ class MomentMatrix(object):
         for i,yi in enumerate(self.matrix_monos):
             Ai[i] = coefdict.get(yi,0)
         return Ai
-    
+
     def get_LMI_coefficients(self):
-        allconstraints = []
+        """
+        M = sum_\alpha y_alpha B_alpha, this function returns a list of B_alphas, as sparse matrices
+        """
+        Balpha = []
         constterm = True
         for yi in self.matrix_monos:
             indices = self.term_to_indices_dict[yi]
             term = spmatrix(-1,[0]*len(indices), indices, size=(1,len(self.expanded_monos)), tc='d')
-            allconstraints += [term]
-        return allconstraints
+            Balpha += [term]
+        return Balpha
 
     def get_Bflat(self):
         """ M_flattened = sum_i y_i Bflat_i
@@ -200,13 +208,13 @@ class LocalizingMatrix(object):
         MomentMatrix.get_LMI_coefficients. Except now expanded_monos becomes
         expanded_polys
         """
-        allconstraints = []
+        Balpha = []
         for yi in self.mm.matrix_monos:
             indices = [k for k,v in self.term_to_indices_dict[yi]]
             values = [-v for k,v in self.term_to_indices_dict[yi]]
-            allconstraints += [spmatrix(values, [0]*len(indices), \
+            Balpha += [spmatrix(values, [0]*len(indices), \
                                         indices, size=(1,len(self.expanded_polys)), tc='d')]
-        return allconstraints
+        return Balpha
 
     
 

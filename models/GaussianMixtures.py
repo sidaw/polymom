@@ -14,7 +14,11 @@ multivariate_normal = sc.random.multivariate_normal
 dirichlet = sc.random.dirichlet
 
 from util import permutation, wishart
+from util import hermite_coeffs
+import sympy as sp
 
+from itertools import combinations_with_replacement
+from collections import Counter
 # import spectral.linalg as sl
 
 class GaussianMixtureModel( Model ):
@@ -27,6 +31,10 @@ class GaussianMixtureModel( Model ):
         self.weights = self.get_parameter( "w" )
         self.means = self.get_parameter( "M" )
         self.sigmas = self.get_parameter( "S" )
+
+        # symbolica means and covs
+        self.sym_means = sp.symbols('xi1:'+str(self.d+1))
+        self.sym_covs =  sp.symbols('c1:'+str(self.d+1))
 
     @staticmethod
     def from_file( fname ):
@@ -69,6 +77,61 @@ class GaussianMixtureModel( Model ):
         return X
 
     @staticmethod
+    def polymom_univariate(xi, c, order):
+        constr = 0
+        H = abs(hermite_coeffs(order+1))
+        for i in range(order+1):
+            constr = constr + H[order,i]* xi**(i) * c**((order-i)/2)
+        return constr
+
+    @staticmethod
+    def polymom_diag(xis, covs, dims = (1, 2, 2, 3)):
+        # a formula for the general moment is here:
+        # https://www.stats.bris.ac.uk/research/stats/reports/2002/0211.pdf
+        # but it feels like a programming contest problem, and I'll just do
+        # the diagonal version for now
+        dimtodeg = Counter()
+        for d in dims:
+            dimtodeg[d] += 1
+        
+        expr = 1
+        for dim,deg in dimtodeg.items():
+            expr = expr * ( GaussianMixtureModel.polymom_univariate(xis[dim-1], covs[dim-1], deg) )
+        return expr.expand()
+
+    def polymom_all_expressions(self, maxdeg):
+        # xis are the means of the Gaussian
+        d = self.d
+        xis = self.sym_means
+        covs = self.sym_covs
+        exprs = []
+
+        for deg in range(1,maxdeg+1):
+            for indices in combinations_with_replacement(range(1,d+1),deg):
+                exprs.append(GaussianMixtureModel.polymom_diag(xis,covs,indices))
+        return exprs
+
+    def polymom_all_constraints(self, maxdeg):
+        d = self.d
+        xis = self.sym_means
+        covs = self.sym_covs
+
+        exprs = self.polymom_all_expressions(maxdeg)
+        import mompy as mp
+        meas = mp.Measure(xis+covs)
+
+        for i in range(self.k):
+            means,covs = self.means.T[ i ], sc.diag(self.sigmas[ i ])
+            meas += (self.weights[i], means.tolist() + covs.tolist())
+        meas.normalize()
+        
+        for i,expr in enumerate(exprs):
+            exprval = meas.integrate(expr)
+            exprs[i] = expr - exprval
+
+        return exprs
+    
+    @staticmethod
     def generate( fname, k, d, means = "hypercube", cov = "spherical",
             weights = "random", dirichlet_scale = 10, gaussian_precision
             = 0.01 ):
@@ -104,6 +167,10 @@ class GaussianMixtureModel( Model ):
             # Using 1/gamma instead of inv_gamma
             sigma = 1/sc.random.gamma(1/gaussian_precision)
             S = array( [ sigma * eye( d ) for i in xrange( k ) ] )
+        elif cov == "diagonal":
+            # Using 1/gamma instead of inv_gamma
+            sigmas = [1/sc.random.gamma(1/gaussian_precision) for i in xrange(d)]
+            S = array( [ diag(sigmas) for i in xrange( k ) ] )
         elif isinstance( cov, sc.ndarray ):
             S = cov
         elif cov == "random":
