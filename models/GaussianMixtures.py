@@ -130,6 +130,19 @@ class GaussianMixtureModel( Model ):
             exprs[i] = expr - exprval
 
         return exprs
+
+    def polymom_all_constraints_samples(self, maxdeg, X):
+        # xis are the means of the Gaussian
+        d = self.d
+        xis = self.sym_means
+        covs = self.sym_covs
+        exprs = []
+
+        for deg in range(1,maxdeg+1):
+            for indices in combinations_with_replacement(range(1,d+1),deg):
+                m_hat = sc.mean(sc.prod(X[:, sc.array(indices)-1],1),0)
+                exprs.append(GaussianMixtureModel.polymom_diag(xis,covs,indices) - m_hat)
+        return exprs
     
     @staticmethod
     def generate( fname, k, d, means = "hypercube", cov = "spherical",
