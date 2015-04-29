@@ -45,7 +45,7 @@ class EMAlgorithm:
                 iter_cb( i, O, lhood )
 
             lhood_, Z = self.compute_expectation(X, O)
-            if abs(lhood_ - lhood) < eps:
+            if abs(lhood_ - lhood) < eps and i > 10:
                 print "Converged with lhood=%f in %d steps." % ( lhood, i )
                 lhood = lhood_
                 break
@@ -96,7 +96,7 @@ class GaussianMixtureEM( EMAlgorithm ):
 
         # Get new means
         M = (Z.T.dot( X ).T / w)
-        sigma = (cdist( X, M.T ) * Z).sum()/(d*N)
+        sigma = sc.sqrt(( cdist(X, M.T )**2 * Z).sum()/(d*N))
         w /= w.sum()
 
         return M, sigma, w
