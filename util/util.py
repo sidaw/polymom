@@ -12,7 +12,6 @@ from numpy.linalg import eig, inv, svd
 import scipy.sparse, scipy.stats
 import ipdb
 from munkres import Munkres
-from simdiag import jacobi_angles
 import sys
 
 eps = 1e-8
@@ -285,7 +284,7 @@ def simultaneously_diagonalize(Ms):
     Simultaneously diagonalize a set of matrices.
     * Currently uses a crappy "diagonalize one and use for the rest"
       method.
-    TODO: Use QR1JD.
+    TODO: Just sum up the matrices randomly and do eig.
     """
     #ipdb.set_trace()
     #R, L, err = jacobi_angles(*Ms)
@@ -532,6 +531,15 @@ def test_project_nullspace():
     # b = A [1 0 0], B = [1,-1,1], P = [1,1,0]
     b = np.array([1,1])[:,np.newaxis]
     print 'should stay fixed'
-    print projectOntoNullspace(A,b,np.array([2,-1,1])[:, np.newaxis])
+    print project_nullspace(A,b,np.array([2,-1,1])[:, np.newaxis])
     print 'should also go to [2,-1,1]'
-    print projectOntoNullspace(A,b,np.array([3,0,1])[:, np.newaxis])
+    print project_nullspace(A,b,np.array([3,0,1])[:, np.newaxis])
+
+def column_aerr( M, M_ ):
+    return max( map( lambda (mu, mu_): norm( mu - mu_ ),  zip( M.T, M_.T
+        ) ) )
+
+def column_rerr( M, M_ ):
+    return max( map( lambda (mu, mu_): norm( mu - mu_ )/norm( mu ),  zip(
+        M.T, M_.T ) ) )
+
