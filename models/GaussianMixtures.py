@@ -2,6 +2,7 @@
 Generate data from a Gaussian mixture model
 """
 
+import numpy as np
 import scipy as sc
 import scipy.linalg
 from scipy import array, zeros, ones, eye
@@ -9,12 +10,14 @@ from scipy.linalg import inv
 from models.Model import Model
 from util import chunked_update #, ProgressBar
 
+from sktensor import ktensor
+
 multinomial = sc.random.multinomial
 multivariate_normal = sc.random.multivariate_normal 
 dirichlet = sc.random.dirichlet
 
 from util import permutation, wishart
-from util import hermite_coeffs
+from util import hermite_coeffs, tensorify
 import sympy as sp
 
 from itertools import combinations_with_replacement, combinations
@@ -75,6 +78,22 @@ class GaussianMixtureModel( Model ):
             cnt_ += cnt
         X.flush()
         return X
+
+    def get_exact_moments(self):
+        d = self.d
+        sigma2 = self.sigmas[0,0,0]
+        M1 = sum( w * mu for w, mu in zip(self.weights, self.means.T)).reshape(d,1)
+        M2 = sum( w * (sc.outer(mu,mu) + S) for w, mu, S in zip(self.weights, self.means.T, self.sigmas))
+        M3 = sum( w * tensorify(mu,mu,mu) for w, mu, S in zip(self.weights, self.means.T, self.sigmas))
+
+        M1_ = np.hstack( (M1 for _ in range(d)) )
+        M3 += sigma2 * ktensor([M1_, np.eye(d), np.eye(d)]).totensor()
+        M3 += sigma2 * ktensor([np.eye(d), M1_, np.eye(d)]).totensor()
+        M3 += sigma2 * ktensor([np.eye(d), np.eye(d), M1_]).totensor()
+
+        return M1, M2, M3
+
+
 
     @staticmethod
     def polymom_univariate(xi, c, order):
