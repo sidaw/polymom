@@ -4,5 +4,7 @@
 
 """
 
+from linalg import *
 from util import *
+from data import *
 
