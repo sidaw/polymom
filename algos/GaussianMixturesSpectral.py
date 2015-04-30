@@ -29,18 +29,17 @@ def get_moments(xs, k):
     m2 = xs.T.dot(xs) / n 
     U, S, _ = np.linalg.svd(m2 - m1.dot(m1.T))
 
-    print S
     sigma2, v = S[-1], U[:,-1]
 
-    #m1 = (np.atleast_2d((X - m1).dot(v)**2).T * X ).sum(0) / N
-    #M1 = np.repeat(np.atleast_2d(m1).T, 3, 1)
+    m1 = (np.atleast_2d((xs - m1.T).dot(v)**2).T * xs ).sum(0) / n
+    M1 = np.hstack(np.atleast_2d(m1).T for _ in range(d))
+    #M1 = sigma2 * np.hstack( (m1 for _ in range(d)) )
 
-    M1 = np.hstack( (m1 for _ in range(d)) )
     M2 = m2 - sigma2 * np.eye(d)
     M3 = Triples(xs, xs, xs)
-    M3 -= sigma2 * ktensor([M1, np.eye(d), np.eye(d)]).totensor()
-    M3 -= sigma2 * ktensor([np.eye(d), M1, np.eye(d)]).totensor()
-    M3 -= sigma2 * ktensor([np.eye(d), np.eye(d), M1]).totensor()
+    M3 -= ktensor([M1, np.eye(d), np.eye(d)]).totensor()
+    M3 -= ktensor([np.eye(d), M1, np.eye(d)]).totensor()
+    M3 -= ktensor([np.eye(d), np.eye(d), M1]).totensor()
     return m1, M2, M3
 
 def get_whitener( A, k ):
