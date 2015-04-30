@@ -143,6 +143,23 @@ class GaussianMixtureModel( Model ):
                 m_hat = sc.mean(sc.prod(X[:, sc.array(indices)-1],1),0)
                 exprs.append(GaussianMixtureModel.polymom_diag(xis,covs,indices) - m_hat)
         return exprs
+
+    def polymom_monos(self, deg):
+        """ return monomials needed to fit this model
+        """
+        import sympy.polys.monomials as mn
+        allvars = self.sym_means + self.sym_covs
+        rawmonos = mn.itermonomials(allvars, deg)
+        
+        # filter out anything whose total degree in cov is greater than floor(deg/2)
+        filtered = []
+        cov_deg_limit = int(sc.floor(deg/2))
+        for mono in rawmonos:
+            pd = mono.as_powers_dict()
+            sumcovdeg = sum([pd[covvar] for covvar in self.sym_covs])
+            if sumcovdeg <= cov_deg_limit:
+                filtered.append(mono)
+        return filtered
     
     @staticmethod
     def generate( fname, k, d, means = "hypercube", cov = "spherical",
@@ -178,7 +195,7 @@ class GaussianMixtureModel( Model ):
                 raise NotImplementedError
                 
         elif means == "random":
-            M = 2*sc.randn( d, k )
+            M = 5*sc.randn( d, k )
         elif isinstance( means, sc.ndarray ):
             M = means
         else:
