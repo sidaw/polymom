@@ -222,13 +222,20 @@ class GaussianMixtureModel( Model ):
 
         if cov == "spherical":
             # Using 1/gamma instead of inv_gamma
+            sigmas = []
+            for i in xrange(k):
+                sigmak = 10*sc.random.rand()+1
+                sigmas = sigmas + [ sigmak * eye( d ) ]
+            S = array( sigmas )
+        elif cov == "spherical_uniform":
+            # Using 1/gamma instead of inv_gamma
             sigma = 1/sc.random.gamma(1/gaussian_precision)
             S = array( [ sigma * eye( d ) for i in xrange( k ) ] )
         elif cov == "diagonal":
             # Using 1/gamma instead of inv_gamma
             sigmas = []
             for i in xrange(k):
-                sigmak = [1./sc.random.gamma(0.1/gaussian_precision) for i in xrange(d)]
+                sigmak = [1./sc.random.gamma(1/gaussian_precision) for i in xrange(d)]
                 sigmas = sigmas + [ sc.diag(sigmak) ]
             S = array( sigmas )
         elif isinstance( cov, sc.ndarray ):

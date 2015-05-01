@@ -15,6 +15,7 @@ from util import closest_permuted_matrix, \
         closest_permuted_vector, column_aerr, column_rerr
 
 from nose import with_setup
+
 def set_random_seed():
     """
     Setup hook for test functions
@@ -72,9 +73,9 @@ def solve_with_moments(M1, M2, M3, K):
     W, Wt = get_whitener( M2, K )
     M3_ = sc.einsum( 'ijk,ia,jb,kc->abc', M3, W, W, W )
 
-    print "M3", M3
+    #print "M3", M3
     pi_, M_, _, _ = candecomp(M3_, K)
-    print "mu", M_
+    #print "mu", M_
     mu = Wt.dot(M_.dot(np.diag(pi_)))
     return mu
 

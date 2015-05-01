@@ -74,10 +74,11 @@ class GaussianMixtureEM( EMAlgorithm ):
 
         total_lhood = 0
         # Get pairwise distances between centers (D_ij = \|X_i - M_j\|)
-        D = cdist( X, M.T )
+        D = cdist( X, M.T, 'sqeuclidean' )
         # Probability dist = 1/2(\sigma^2) D^2 + log w
-        Z = - 0.5/sigma**2 * (D**2) + log( w ) - 0.5 * d * log(sigma) # Ignoreing constant term
-        total_lhood += logsumexp( logsumexp(Z) )
+        # import ipdb; ipdb.set_trace()
+        Z = - 0.5/sigma**2 *D + log( w ) - d * log(sigma) # Ignoreing constant term
+        total_lhood += logsumexp(Z, axis=1).sum(0)
 
         # Normalise the probilities (soft EM)
         Z = sc.exp(Z.T - logsumexp(Z, 1)).T
@@ -92,11 +93,11 @@ class GaussianMixtureEM( EMAlgorithm ):
 
         # Cluster weights (smoothed)
         # Pseudo counts
-        w = Z.sum(axis=0) + 1
+        w = Z.sum(axis=0) + 1e-5
 
         # Get new means
         M = (Z.T.dot( X ).T / w)
-        sigma = sc.sqrt(( cdist(X, M.T )**2 * Z).sum()/(d*N))
+        sigma = sc.sqrt(1e-7+( cdist(X, M.T, 'sqeuclidean') * Z).sum(0)/(N))
         w /= w.sum()
 
         return M, sigma, w
@@ -124,7 +125,7 @@ class GaussianMixtureEM( EMAlgorithm ):
             M.append( X[m] )
 
         M = sc.column_stack( M )
-        sigma = cdist( X, M.T ).sum()/(k*d*N)
+        sigma = sc.sqrt(cdist( X, M.T, 'sqeuclidean').sum(0)/(N))
         w = ones( k )/float(k)
 
         return M, sigma, w
