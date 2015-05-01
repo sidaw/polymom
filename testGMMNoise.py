@@ -73,10 +73,10 @@ def M_true(gm, X):
 def test_all_methods():
     k = 3
     d = 3
-    numsamp = 1000
+    numsamp = 50000
     typemean = 'hypercube'
-    typecov = 'spherical'
-    numtrials = 100
+    typecov = 'diagonal'
+    numtrials = 20
     #sc.random.seed(101)
 
     
