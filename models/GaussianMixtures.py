@@ -170,13 +170,13 @@ class GaussianMixtureModel( Model ):
         allvars = self.sym_means + self.sym_covs
         rawmonos = mn.itermonomials(allvars, deg)
         
-        # filter out anything whose total degree in cov is greater than floor(deg/2)
+        # filter out anything whose total degree in cov is greater than deg
         filtered = []
-        cov_deg_limit = int(sc.floor(deg/2))
         for mono in rawmonos:
             pd = mono.as_powers_dict()
-            sumcovdeg = sum([pd[covvar] for covvar in self.sym_covs])
-            if sumcovdeg <= cov_deg_limit:
+            sumcovdeg = sum([2*pd[covvar] for covvar in self.sym_covs])
+            sumcovdeg += sum([pd[meanvar] for meanvar in self.sym_means])
+            if sumcovdeg <= deg:
                 filtered.append(mono)
         return filtered
     
@@ -224,7 +224,7 @@ class GaussianMixtureModel( Model ):
             # Using 1/gamma instead of inv_gamma
             sigmas = []
             for i in xrange(k):
-                sigmak = 10*sc.random.rand()+1
+                sigmak = 0.5*sc.random.rand()+0.5
                 sigmas = sigmas + [ sigmak * eye( d ) ]
             S = array( sigmas )
         elif cov == "spherical_uniform":
@@ -235,7 +235,7 @@ class GaussianMixtureModel( Model ):
             # Using 1/gamma instead of inv_gamma
             sigmas = []
             for i in xrange(k):
-                sigmak = [15*sc.random.rand()+3 for i in xrange(d)]
+                sigmak = [3*sc.random.rand()+1 for i in xrange(d)]
                 sigmas = sigmas + [ sc.diag(sigmak) ]
             S = array( sigmas )
         elif isinstance( cov, sc.ndarray ):
