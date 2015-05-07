@@ -88,8 +88,6 @@ def test_all_methods():
     typecov = 'diagonal'
     numtrials = 10
     #sc.random.seed(101)
-
-    
     
     estimators = [M_EM, M_Spectral, M_polymom, M_true]
     estimators = [M_EM,  M_Spectral, M_polymom, M_true]
