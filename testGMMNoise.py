@@ -57,6 +57,47 @@ def M_polymom(gm, X, degmm=3, degobs=4):
     C_ = sc.column_stack(Clist)
     return M_,C_
 
+def M_polymomconvexiter(gm, X, degmm=3, degobs=4):
+    tol= 1e-2
+    k = gm.k
+    
+    monos = gm.polymom_monos(degmm)
+    constraints = gm.polymom_all_constraints(degobs)
+    xis = gm.sym_means
+    covs = gm.sym_covs
+    sym_all = xis + covs
+    MM = mp.MomentMatrix(degmm, sym_all, morder='grevlex', monos=monos)
+    constraints_noisy = gm.polymom_all_constraints_samples(degobs, X)
+
+    cin = mp.solvers.get_cvxopt_inputs(MM, constraints_noisy)
+
+    for i in xrange(1):
+        randdir =cvxopt.matrix( np.random.rand(*cin['c'].size) )
+        solsdp_noisy = solvers.sdp(cin['c'], Gs=cin['G'], hs=cin['h'], A=cin['A'], b=cin['b'])
+        soln = np.array(solsdp_noisy['ss'][0])
+
+        Us,Sigma,Vs=np.linalg.svd(soln)
+
+        if Sigma[k] <= tol:
+            break
+        else:
+            pass
+            #print '%.4f' % Sigma[k]
+        
+    #sol_noisy = mp.extractors.extract_solutions_dreesen_proto(MM, solsdp_noisy['x'], Kmax = k)
+    sol_noisy = mp.extractors.extract_solutions_lasserre(MM, solsdp_noisy['x'], Kmax = k)
+    # M should always be k by d
+    Mlist = []
+    Clist = []
+    for dim in xis:
+        Mlist.append(sol_noisy[dim])
+    for dim in covs:
+        Clist.append(sol_noisy[dim])
+    
+    M_ = sc.column_stack(Mlist)
+    C_ = sc.column_stack(Clist)
+    return M_,C_
+
 def M_Spectral(gm, X):
     fname = "gmm-3-10-0.7.npz"
     k = gm.k
