@@ -25,6 +25,7 @@ from IPython.display import display, Markdown, Math
 from operator import mul
 import sympy as sp
 
+
 sp.init_printing()
 
 
@@ -36,8 +37,8 @@ sp.init_printing()
 
 # In[25]:
 
-k = 2
-d = 2
+k = 3
+d = 3
 degobs = 4
 degmm = 3
 
