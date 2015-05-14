@@ -42,8 +42,8 @@ d = 3
 degobs = 4
 degmm = 3
 
-sc.random.seed(101)
-gm = models.GaussianMixtureModel.generate('', k, d, means='random', cov='diagonal')
+#sc.random.seed(11)
+gm = models.GaussianMixtureModel.generate('', k, d, means='rotatedhypercube', cov='diagonal')
 
 monos = gm.polymom_monos(degmm)
 constraints = gm.polymom_all_constraints(degobs)
@@ -73,7 +73,7 @@ display(MM.row_monos)
 #    w = Bf.dot(W.flatten())
 #    solsdp = cvxopt.solvers.sdp(cvxopt.matrix(w), Gs=cin['G'], hs=cin['h'], A=cin['A'], b=cin['b']) 
 # solsdp = cvxopt.solvers.sdp(cin['c'], Gs=cin['G'], hs=cin['h'], A=cin['A'], b=cin['b'])
-solsdp = mp.solvers.solve_moments_with_convexiterations(MM, constraints, k);
+solsdp = mp.solvers.solve_moments_with_convexiterations(MM, constraints, k, maxiter = 50);
 
 
 

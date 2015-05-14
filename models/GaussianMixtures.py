@@ -212,6 +212,22 @@ class GaussianMixtureModel( Model ):
                     M[inds, i] = 1
             else:
                 raise NotImplementedError
+
+        elif means == "rotatedhypercube":
+            # Place means at the vertices of the hypercube
+            M = zeros( (d, k) )
+            randmat = sc.randn(d,d)
+            randrot,__,__ = sc.linalg.svd(randmat)
+            if k <= 2**d:
+                # the minimum number of ones needed to fill k of them
+                numones = int(sc.ceil(sc.log(k)/sc.log(d)))
+                allinds = combinations(range(d), numones)
+                for i,inds in enumerate(allinds):
+                    if i == k: break
+                    M[inds, i] = 1
+            else:
+                raise NotImplementedError
+            M = randrot.dot(M)
                 
         elif means == "random":
             M = 5*sc.randn( d, k )
@@ -224,7 +240,7 @@ class GaussianMixtureModel( Model ):
             # Using 1/gamma instead of inv_gamma
             sigmas = []
             for i in xrange(k):
-                sigmak = 0.5*sc.random.rand()+0.5
+                sigmak = 1*sc.random.rand()+1
                 sigmas = sigmas + [ sigmak * eye( d ) ]
             S = array( sigmas )
         elif cov == "spherical_uniform":
