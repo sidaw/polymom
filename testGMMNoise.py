@@ -57,7 +57,7 @@ def M_polymom(gm, X, degmm=3, degobs=4):
     C_ = sc.column_stack(Clist)
     return M_,C_
 
-def M_polymomconvexiter(gm, X, degmm=3, degobs=4):
+def M_polymomconvexiter(gm, X, degmm=3, degobs=5):
     tol= 1e-2
     k = gm.k
     
@@ -69,7 +69,7 @@ def M_polymomconvexiter(gm, X, degmm=3, degobs=4):
     MM = mp.MomentMatrix(degmm, sym_all, morder='grevlex', monos=monos)
     constraints_noisy = gm.polymom_all_constraints_samples(degobs, X)
 
-    solsdp_noisy = mp.solvers.solve_moments_with_convexiterations(MM, constraints_noisy, k, maxiter = 50);
+    solsdp_noisy = mp.solvers.solve_moments_with_convexiterations(MM, constraints_noisy, k, maxiter = 13);
 
     #sol_noisy = mp.extractors.extract_solutions_dreesen_proto(MM, solsdp_noisy['x'], Kmax = k)
     sol_noisy = mp.extractors.extract_solutions_lasserre(MM, solsdp_noisy['x'], Kmax = k)
@@ -96,7 +96,7 @@ def M_Spectral(gm, X):
 def M_EM(gm, X):
     from sklearn import mixture
     k = gm.k
-    sklgmm = mixture.GMM(n_components=k, covariance_type='spherical', n_init=1, n_iter = 10, thresh = 1e-2)
+    sklgmm = mixture.GMM(n_components=k, covariance_type='diag', n_init=1, n_iter = 10, thresh = 1e-2)
     sklgmm.fit(X)
     return sklgmm.means_, sklgmm.covars_
 
@@ -109,16 +109,16 @@ def M_true(gm, X):
     return M_, C_
 
 def test_all_methods():
-    k = 2
-    d = 2
-    numsamp = 100000
-    typemean = 'hypercube'
-    typecov = 'spherical'
+    k = 3
+    d = 3
+    numsamp = 50000
+    typemean = 'random'
+    typecov = 'diagonal'
     numtrials = 1
     #sc.random.seed(101)
     
     estimators = [M_EM, M_Spectral, M_polymom, M_true]
-    estimators = [M_EM,  M_Spectral, M_polymom, M_polymomconvexiter, M_true]
+    estimators = [M_EM,  M_Spectral, M_polymomconvexiter, M_polymom, M_true]
     totalerror = Counter()
     totalerrorC = Counter()
 
