@@ -240,7 +240,7 @@ class GaussianMixtureModel( Model ):
             # Using 1/gamma instead of inv_gamma
             sigmas = []
             for i in xrange(k):
-                sigmak = 1*sc.random.rand()+1
+                sigmak = 2*sc.random.rand()+2
                 sigmas = sigmas + [ sigmak * eye( d ) ]
             S = array( sigmas )
         elif cov == "spherical_uniform":
