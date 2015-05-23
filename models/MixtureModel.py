@@ -1,5 +1,5 @@
 """
-Generate data from a Gaussian mixture model
+Generate data from a three-view mixture model
 """
 
 import numpy as np
@@ -24,8 +24,8 @@ from itertools import combinations_with_replacement, combinations
 from collections import Counter
 # import spectral.linalg as sl
 
-class GaussianMixtureModel(Model):
-    """Generic mixture model with N components"""
+class MixtureModel(Model):
+    """Generic mixture model with 3 components"""
     def __init__(self, fname, **params):
         """Create a mixture model for components using given weights"""
         Model.__init__(self, fname, **params)
@@ -275,44 +275,3 @@ class GaussianMixtureModel(Model):
             lhood += sc.log(lhood_)
         return lhood
 
-def test_gaussian_mixture_generator_dimensions():
-    "Test the GaussianMixtureModel generator"
-    import tempfile
-    fname = tempfile.mktemp()
-
-    N = 1000
-    D = 10
-    K = 3
-
-    gmm = GaussianMixtureModel.generate(fname, K, D)
-    assert(gmm.means.shape == (D, K))
-    assert(gmm.weights.shape == (K,))
-
-    X = gmm.sample(N)
-    assert(X.shape == (N, D))
-
-def test_gaussian_mixture_generator_replicatability():
-    "Test the GaussianMixtureModel generator"
-    import tempfile
-    fname = tempfile.mktemp()
-
-    N = 1000
-    n = 500
-    D = 10
-    K = 3
-
-    gmm = GaussianMixtureModel.generate(fname, K, D)
-    gmm.set_seed(100)
-    gmm.save()
-
-    X = gmm.sample(N)
-    del gmm
-
-    gmm = GaussianMixtureModel.from_file(fname)
-    Y = gmm.sample(N)
-    assert(sc.allclose(X, Y))
-    del gmm
-
-    gmm = GaussianMixtureModel.from_file(fname)
-    Y = gmm.sample(N, n)
-    assert(sc.allclose(X[:n], Y))
