@@ -8,7 +8,6 @@ import os, shutil
 
 class Model:
     """Generic mixture model that contains a bunch of weighted means"""
-
     def __init__(self, **params):
         """Create a mixture model for components using given weights"""
         self.params = params
@@ -28,6 +27,7 @@ class Model:
         sc.random.seed(int(seed))
         self["seed"] = seed
 
+    # Container interface
     def __getitem__(self, name):
         if name in self.params:
             return self.params[name]
@@ -36,6 +36,12 @@ class Model:
 
     def __setitem__(self, name, value):
         self.params[name] = value
+
+    def __delitem__(self, name, value):
+        raise RuntimeError("Can't delete parameters")
+
+    def __len__(self):
+        return len(self.params)
 
     def _allocate_samples(self, name, shape):
         """Allocate for (shape) samples"""
@@ -61,21 +67,39 @@ class Model:
             model.set_seed(model["seed"])
         return model
 
-    def exact_moments(self):
+    def exact_moments(self, terms):
+        """
+        Compute exact moments for terms
+        """
         raise NotImplementedError()
 
-    def estimated_moments(self, xs):
+    def empirical_moments(self, xs, terms):
+        """
+        Estimate moments from data xs for terms
+        """
         raise NotImplementedError()
 
     def sample(self, n_samples):
+        """
+        return n_samples of data
+        """
         raise NotImplementedError()
 
-    def likelihood(self, xs):
+    def llikelihood(self, xs):
+        """
+        return the log-likelihood of data
+        """
         raise NotImplementedError()
 
     def moment_equations(self, maxdeg):
+        """
+        return scipy moment equation expressions
+        """
         raise NotImplementedError()
 
     def moment_monomials(self, maxdeg):
+        """
+        return scipy moment monomials
+        """
         raise NotImplementedError()
 

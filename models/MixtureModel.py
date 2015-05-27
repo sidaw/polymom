@@ -26,33 +26,31 @@ from collections import Counter
 
 class MixtureModel(Model):
     """Generic mixture model with 3 components"""
-    def __init__(self, fname, **params):
+    def __init__(self, **params):
         """Create a mixture model for components using given weights"""
-        Model.__init__(self, fname, **params)
-        self.k = self.get_parameter("k")
-        self.d = self.get_parameter("d")
-        self.weights = self.get_parameter("w")
-        self.means = self.get_parameter("M")
-        self.sigmas = self.get_parameter("S")
+        Model.__init__(self, **params)
+        self.k = self["k"]
+        self.d = self["d"]
+        self.weights = self["w"]
+        self.means = self["M"] # Draw as a multinomial distribution
 
-        # symbolica means and covs
-        self.sym_means = sp.symbols('xi1:'+str(self.d+1))
-        self.sym_covs =  sp.symbols('c1:'+str(self.d+1))
+        # symbolic means and observed variables
+        self.sym_means = sp.symbols('x1:'+str(self.d+1))
+        self.sym_obs = self.sym_means
 
     @staticmethod
     def from_file(fname):
         """Load model from a HDF file"""
         model = Model.from_file(fname) 
-        return GaussianMixtureModel(**model.params)
+        return MixtureModel(**model.params)
 
-    def sample(self, N, n = -1):
+    def sample(self, N):
         """Sample N samples from the model. If N, n are both specified,
         then generate N samples, but only keep n of them"""
-        if n <= 0: 
-            n = N
-        shape = (n, self.d)
+        shape = (N, self.d, 3)
 
-        X = self._allocate_samples("X", shape)
+        X = np.zeros(shape)
+        #X = self._allocate_samples("X", shape)
         # Get a random permutation of N elements
         perm = permutation(N)
 
@@ -63,131 +61,115 @@ class MixtureModel(Model):
         for i in xrange(self.k):
             cnt = cnts[i]
             # Generate a bunch of points for each mean
-            mean, sigma = self.means.T[ i ], self.sigmas[ i ]
+            mean = self.means.T[i]
 
-            # 1e4 is a decent block size
-            def update(start, stop):
-                """Sample random vectors and then assign them to X in
-                order"""
-                Y = multivariate_normal(mean, sigma, int(stop - start))
-                # Insert into X in a shuffled order
-                p = perm[ start:stop ]
-                perm_ = p[ p < n ]
-                X[ perm_ ] = Y[ p < n ]
-            chunked_update(update, cnt_, 10 ** 4, cnt_ + cnt )
+            Y1 = multinomial(1, mean, size=int(cnt))
+            Y2 = multinomial(1, mean, size=int(cnt))
+            Y3 = multinomial(1, mean, size=int(cnt))
+            perm_ = perm[cnt_ : cnt_ + cnt]
+            X[perm_,:,0] = Y1
+            X[perm_,:,1] = Y2
+            X[perm_,:,2] = Y3
+
             cnt_ += cnt
-        X.flush()
         return X
 
-    def get_exact_moments(self):
-        d = self.d
-        sigma2 = self.sigmas[0,0,0]
-        M1 = sum(w * mu for w, mu in zip(self.weights, self.means.T)).reshape(d,1)
-        M2 = sum(w * (sc.outer(mu,mu) + S) for w, mu, S in zip(self.weights, self.means.T, self.sigmas))
-        M3 = sum(w * tensorify(mu,mu,mu) for w, mu, S in zip(self.weights, self.means.T, self.sigmas))
+    def llikelihood(self, xs):
+        lhood = 0.
+        for x in xs:
+            x1, x2, x3 = x.argmax(0)
 
-        M1_ = np.hstack((M1 for _ in range(d)))
-        M3 += sigma2 * ktensor([M1_, np.eye(d), np.eye(d)]).totensor()
-        M3 += sigma2 * ktensor([np.eye(d), M1_, np.eye(d)]).totensor()
-        M3 += sigma2 * ktensor([np.eye(d), np.eye(d), M1_]).totensor()
+            lhood_ = 0.
+            for i in xrange(self.k):
+                lhood_ += self.weights[i] * self.means[i,x1] * self.means[i,x2] * self.means[i,x3]
+            lhood += sc.log(lhood_)
+        return lhood
 
-        return M1, M2, M3
+    def _compute_power(self, term, x):
+        """Compute a term to a power"""
+        powers = term.as_powers_dict()
+        moment = 1.
+        for i, s in enumerate(self.sym_means):
+            moment *= x[i]**(powers[s])
+        return moment
 
-    @staticmethod
-    def polymom_univariate(xi, c, order):
-        constr = 0
-        H = abs(hermite_coeffs(order+1))
-        for i in range(order+1):
-            constr = constr + H[order,i]* xi**(i) * c**((order-i)/2)
-        return constr
+    def _compute_empirical_power(self, term, x):
+        """Assumes enough views to compute powers"""
+        powers = term.as_powers_dict()
+        moment = 1.
+        idx = 0
+        for i, s in enumerate(self.sym_means):
+            for _ in xrange(powers[s]):
+                moment *= x[i,idx]
+                idx += 1
+        return moment
 
-    @staticmethod
-    def polymom_diag(xis, covs, dims = (1, 2, 2, 3)):
-        # a formula for the general moment is here:
-        # https://www.stats.bris.ac.uk/research/stats/reports/2002/0211.pdf
-        # but it feels like a programming contest problem, and I'll just do
-        # the diagonal version for now
-        dimtodeg = Counter()
-        for d in dims:
-            dimtodeg[d] += 1
-        
-        expr = 1
-        for dim,deg in dimtodeg.items():
-            expr = expr * (GaussianMixtureModel.polymom_univariate(xis[dim-1], covs[dim-1], deg))
-        return expr.expand()
+    def exact_moments(self, terms):
+        """
+        Get the exact moments corresponding to a particular term
+        """
 
-    def polymom_all_expressions(self, maxdeg):
-        # xis are the means of the Gaussian
-        d = self.d
-        xis = self.sym_means
-        covs = self.sym_covs
-        exprs = []
+        moment = {term : 0. for term in terms}
+        for k in xrange(self.k):
+            for term in terms:
+                moment[term] += self.weights[k] * self._compute_power(term, self.means.T[k])
+        return moment
 
-        for deg in range(1,maxdeg+1):
-            for indices in combinations_with_replacement(range(1,d+1),deg):
-                exprs.append(GaussianMixtureModel.polymom_diag(xis,covs,indices))
-        return exprs
+    def empirical_moments(self, xs, terms):
+        """
+        Get the exact moments corresponding to a particular term
+        """
+        moment = {term : 0. for term in terms}
+        for i, x in enumerate(xs):
+            for term in terms:
+                moment[term] += (self._compute_empirical_power(term, x) - moment[term])/(i+1)
+        return moment
 
-    def polymom_all_constraints(self, maxdeg):
-        d = self.d
-        xis = self.sym_means
-        covs = self.sym_covs
+    def _moment_equations(self, term):
+        """
+        Get expression for term - in this case, it's really easy, it's just the term itself.
+        """
+        return term
 
-        exprs = self.polymom_all_expressions(maxdeg)
-        import mompy as mp
-        meas = mp.Measure(xis+covs)
-
-        for i in range(self.k):
-            means,covs = self.means.T[ i ], sc.diag(self.sigmas[ i ])
-            meas += (self.weights[i], means.tolist() + covs.tolist())
-        meas.normalize()
-        
-        for i,expr in enumerate(exprs):
-            exprval = meas.integrate(expr)
-            exprs[i] = expr - exprval
-
-        return exprs
-
-    def polymom_all_constraints_samples(self, maxdeg, X):
-        # xis are the means of the Gaussian
-        d = self.d
-        xis = self.sym_means
-        covs = self.sym_covs
-        exprs = []
-
-        for deg in range(1,maxdeg+1):
-            for indices in combinations_with_replacement(range(1,d+1),deg):
-                m_hat = sc.mean(sc.prod(X[:, sc.array(indices)-1],1),0)
-                exprs.append(GaussianMixtureModel.polymom_diag(xis,covs,indices) - m_hat)
-        return exprs
-
-    def polymom_monos(self, deg):
-        """ return monomials needed to fit this model
+    def exact_moment_equations(self, maxdeg):
+        """
+        return scipy moment equation expressions
         """
         import sympy.polys.monomials as mn
-        allvars = self.sym_means + self.sym_covs
-        rawmonos = mn.itermonomials(allvars, deg)
-        
-        # filter out anything whose total degree in cov is greater than deg
-        filtered = []
-        for mono in rawmonos:
-            pd = mono.as_powers_dict()
-            sumcovdeg = sum([2*pd[covvar] for covvar in self.sym_covs])
-            sumcovdeg += sum([pd[meanvar] for meanvar in self.sym_means])
-            if sumcovdeg <= deg:
-                filtered.append(mono)
-        return filtered
-    
+        allvars = self.sym_obs
+        terms = mn.itermonomials(allvars, maxdeg)
+        moments = self.exact_moments(terms)
+
+        return [self._moment_equations(term) - moments[term] for term in terms]
+
+    def empirical_moment_equations(self, xs, maxdeg):
+        """
+        return scipy moment equation expressions
+        """
+        import sympy.polys.monomials as mn
+        allvars = self.sym_obs
+        terms = mn.itermonomials(allvars, maxdeg)
+        moments = self.empirical_moments(xs, terms)
+
+        return [self._moment_equations(term) - moments[term] for term in terms]
+
+    def moment_monomials(self, maxdeg):
+        """
+        return scipy moment monomials
+        """
+        import sympy.polys.monomials as mn
+        allvars = self.sym_obs
+        terms = mn.itermonomials(allvars, maxdeg)
+        return terms
+
     @staticmethod
-    def generate(fname, k, d, means = "hypercube", cov = "spherical",
-            weights = "random", dirichlet_scale = 10, gaussian_precision
-            = 0.01):
+    def generate(k, d, means = "hypercube", weights = "random", dirichlet_scale = 10):
         """Generate a mixture of k d-dimensional gaussians""" 
 
-        model = Model(fname)
+        params = {}
 
-        model.add_parameter("k", k)
-        model.add_parameter("d", d)
+        params["k"] =  k
+        params["d"] =  d
 
         if weights == "random":
             w = dirichlet(ones(k) * dirichlet_scale) 
@@ -198,80 +180,16 @@ class MixtureModel(Model):
         else:
             raise NotImplementedError
 
-        if means == "hypercube":
-            # Place means at the vertices of the hypercube
-            M = zeros((d, k))
-            if k <= 2**d:
-                # the minimum number of ones needed to fill k of them
-                numones = int(sc.ceil(sc.log(k)/sc.log(d)))
-                allinds = combinations(range(d), numones)
-                for i,inds in enumerate(allinds):
-                    if i == k: break
-                    M[inds, i] = 1
-            else:
-                raise NotImplementedError
-
-        elif means == "rotatedhypercube":
-            # Place means at the vertices of the hypercube
-            M = zeros((d, k))
-            randmat = sc.randn(d,d)
-            randrot,__,__ = sc.linalg.svd(randmat)
-            if k <= 2**d:
-                # the minimum number of ones needed to fill k of them
-                numones = int(sc.ceil(sc.log(k)/sc.log(d)))
-                allinds = combinations(range(d), numones)
-                for i,inds in enumerate(allinds):
-                    if i == k: break
-                    M[inds, i] = 1
-            else:
-                raise NotImplementedError
-            M = randrot.dot(M)
-                
-        elif means == "random":
-            M = 5*sc.randn(d, k)
+        if means == "random":
+            M = dirichlet(ones(k) * dirichlet_scale, d) 
         elif isinstance(means, sc.ndarray):
             M = means
         else:
             raise NotImplementedError
 
-        if cov == "spherical":
-            # Using 1/gamma instead of inv_gamma
-            sigmas = []
-            for i in xrange(k):
-                sigmak = 1*sc.random.rand()+1
-                sigmas = sigmas + [ sigmak * eye(d) ]
-            S = array(sigmas)
-        elif cov == "spherical_uniform":
-            # Using 1/gamma instead of inv_gamma
-            sigma = 1/sc.random.gamma(1/gaussian_precision)
-            S = array([ sigma * eye(d) for i in xrange(k) ])
-        elif cov == "diagonal":
-            # Using 1/gamma instead of inv_gamma
-            sigmas = []
-            for i in xrange(k):
-                sigmak = [3*sc.random.rand()+1 for i in xrange(d)]
-                sigmas = sigmas + [ sc.diag(sigmak) ]
-            S = array(sigmas)
-        elif isinstance(cov, sc.ndarray):
-            S = cov
-        elif cov == "random":
-            S = array([ gaussian_precision * inv(wishart(d+1, sc.eye(d), 1)) for i in xrange(k) ])
-        else:
-            raise NotImplementedError
-
-        model.add_parameter("w", w)
-        model.add_parameter("M", M)
-        model.add_parameter("S", S)
+        params["w"] =  w
+        params["M"] =  M
 
         # Unwrap the store and put it into the appropriate model
-        return GaussianMixtureModel(model.fname, **model.params)
-
-    def get_log_likelihood(self, X):
-        lhood = 0.
-        for x in X:
-            lhood_ = 0.
-            for i in xrange(self.k):
-                lhood_ += self.weights[i] * sc.exp(-0.5 * (self.means[i] - x).dot(self.sigmas[i]).dot(self.means[i] - x))
-            lhood += sc.log(lhood_)
-        return lhood
+        return MixtureModel(**params)
 
