@@ -3,7 +3,7 @@
 Various utility methods
 """
 import numpy as np
-import scipy as sc 
+import scipy as sc
 import operator
 from itertools import chain
 from sympy import grevlex
@@ -52,7 +52,7 @@ def tuple_border(t):
 
 def tuple_subs(t1, t2):
     """
-    Does t1_i > t2_i for all i? 
+    Does t1_i > t2_i for all i?
     """
     d = tuple_diff(t1, t2)
     if any(i < 0 for i in d):
@@ -290,7 +290,7 @@ def simultaneously_diagonalize(Ms):
     #R, L, err = jacobi_angles(*Ms)
     #assert err < 1e-5
     #return L, R
-    
+
     it = iter(Ms)
     M = it.next()
     l, R = eig(M)
@@ -347,7 +347,7 @@ def closest_permuted_matrix( A, B ):
         for j in xrange( n ):
             # Best matching between A and B
             W[i, j] = norm(A[i] - B[j])
-        
+
     matching = m.compute( W )
     matching.sort()
     _, rowp = zip(*matching)
@@ -356,6 +356,36 @@ def closest_permuted_matrix( A, B ):
     B_ = B[ rowp ]
 
     return B_
+
+def fix_parameters(true, guess, weights):
+    """Find a column permutation of guess parameters that matches true parameters most closely (i.e. min |A
+    - B|_F) also apply this to weights"""
+
+    # The rows of A and B form a weighted bipartite graph. The weights
+    # are computed using the vector_matching algorithm.
+    # We need to find their minimal matching.
+    assert true.shape == guess.shape
+
+    d, k = true.shape
+    m = Munkres()
+
+    # Create the weight matrix
+    W = sc.zeros((k, k))
+    for i in xrange(k):
+        for j in xrange(k):
+            # Best matching between A and B
+            W[i, j] = norm(true.T[i] - guess.T[j])
+
+    matching = m.compute(W)
+    matching.sort()
+    _, colp = zip(*matching)
+    colp = array(colp)
+    # Permute the rows of B according to Bi
+    guess = guess[:, colp]
+    weights = weights[colp]
+
+    return weights, guess
+
 
 def save_example(R, I, out=sys.stdout):
     out.write(",".join(map(str, R.symbols)) +"\n")
@@ -377,27 +407,17 @@ def partitions(n, d):
 
 def orthogonal(n):
     """Generate a random orthogonal 'd' dimensional matrix, using the
-    the technique described in: 
+    the technique described in:
     Francesco Mezzadri, "How to generate random matrices from the
-    classical compact groups" 
+    classical compact groups"
     """
     n = int( n )
-    z = sc.randn(n, n) 
-    q,r = sc.linalg.qr(z) 
-    d = sc.diagonal(r) 
-    ph = d/sc.absolute(d) 
-    q = sc.multiply(q, ph, q) 
+    z = sc.randn(n, n)
+    q,r = sc.linalg.qr(z)
+    d = sc.diagonal(r)
+    ph = d/sc.absolute(d)
+    q = sc.multiply(q, ph, q)
     return q
-
-def svdk( X, k ):
-    """Top-k SVD decomposition"""
-    U, D, Vt = svd( X, full_matrices=False )
-    return U[:, :k], D[:k], Vt[:k, :]
-
-def approxk( X, k ):
-    """Best k rank approximation of X"""
-    U, D, Vt = svdk( X, k )
-    return U.dot( diag( D ) ).dot( Vt )
 
 def hermite_coeffs(N=6):
     """
@@ -518,14 +538,14 @@ def project_nullspace(A, b, x, randomize = 0):
     U,S,V = scipy.linalg.svd(A)
     rank = np.sum(S>eps)
     B = V[rank:, :]
-    
+
     noise = 0
     if randomize>0:
         dist = norm(V[0:rank,:].dot(xnorm))
         noise = B.T.dot(np.random.randn(B.shape[0],1))
     #ipdb.set_trace()
     return B.T.dot(B.dot(xnorm)) + y0 + noise
-    
+
 def test_project_nullspace():
     A = np.array([[1,0,-1],[1,1,0]])
     # b = A [1 0 0], B = [1,-1,1], P = [1,1,0]
@@ -542,4 +562,14 @@ def column_aerr( M, M_ ):
 def column_rerr( M, M_ ):
     return max( map( lambda (mu, mu_): norm( mu - mu_ )/norm( mu ),  zip(
         M.T, M_.T ) ) )
+
+def dict_diff(d1, d2, p = 2):
+    """
+    Compute the difference between dicts
+    """
+    keys = set.union(set(d1.keys()), set(d2.keys()))
+    diff = 0.
+    for key in keys:
+        diff += abs(d1.get(key, 0.) - d2.get(key, 0.))**p
+    return diff ** (1./p)
 

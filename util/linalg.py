@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from numpy import zeros, diag, array
+from numpy import zeros, diag, array, sqrt
 from numpy.linalg import norm
 import itertools as it
 from munkres import Munkres 
@@ -182,12 +182,23 @@ def symmetrize(X):
     Symmeterize X by taking the average over index swaps
     """
 
+    def to_einstr(ls):
+        return "".join([chr(ord('a') + l) for l in ls])
+
     D, R = X.shape[0], len(X.shape)
     X_ = np.zeros(X.shape)
-    for i,j  in it.combinations( xrange(R), 2 ):
-        X_ += np.swapaxes(X, i, j) / (D * (D-1)/2)
+    for new_order in it.permutations(xrange(R)):
+        # Permute axes with einsum
+        X_ += np.einsum('%s->%s'%(to_einstr(range(R)), to_einstr(new_order)), X) / np.math.factorial(R)
 
     return X_
+
+def test_symmetrize():
+    M = np.array([[1.,1.], [0.,0.]])
+    M1 = symmetrize(M)
+    assert np.allclose(M1, np.array([[1.,0.5], [0.5,0.]]))
+    M2 = symmetrize(M1)
+    assert np.allclose(M2, np.array([[1.,0.5], [0.5,0.]]))
 
 def mrank( x, eps=1e-12 ):
     """Matrix rank"""
@@ -200,5 +211,25 @@ def tensorify(a, b, c):
     c = np.atleast_2d(c).T
 
     return ktensor([a,b,c]).totensor()
+
+def svdk( X, k ):
+    """Top-k SVD decomposition"""
+    U, D, Vt = svd( X, full_matrices=False )
+    return U[:, :k], D[:k], Vt[:k, :]
+
+def approxk( X, k ):
+    """Best k rank approximation of X"""
+    U, D, Vt = svdk( X, k )
+    return U.dot( diag( D ) ).dot( Vt )
+
+
+def get_whitener( A, k ):
+    """Return the matrix W that whitens A, i.e. W^T A W = I. Assumes A
+    is k-rank"""
+
+    U, D, _ = svdk(A, k)
+    Ds = sqrt(D)
+    Di = 1./Ds
+    return U.dot(diag(Di)), U.dot(diag(Ds))
 
 

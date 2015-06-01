@@ -91,7 +91,13 @@ class Model:
         """
         raise NotImplementedError()
 
-    def moment_equations(self, maxdeg):
+    def exact_moment_equations(self, maxdeg):
+        """
+        return scipy moment equation expressions
+        """
+        raise NotImplementedError()
+
+    def empirical_moment_equations(self, xs, maxdeg):
         """
         return scipy moment equation expressions
         """
