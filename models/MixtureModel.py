@@ -2,27 +2,18 @@
 Generate data from a three-view mixture model
 """
 
-import numpy as np
+import sympy as sp
 import scipy as sc
 import scipy.linalg
-from scipy import array, zeros, ones, eye, allclose
+from scipy import array, zeros, ones, eye, allclose, ndarray
 from scipy.linalg import inv
 from models.Model import Model
-from util import chunked_update #, ProgressBar
-
-from sktensor import ktensor
 
 multinomial = sc.random.multinomial
 multivariate_normal = sc.random.multivariate_normal
 dirichlet = sc.random.dirichlet
 
-from util import permutation, wishart
-from util import hermite_coeffs, tensorify
-import sympy as sp
-
-from itertools import combinations_with_replacement, combinations
-from collections import Counter
-# import spectral.linalg as sl
+from util import permutation
 
 class MixtureModel(Model):
     """Generic mixture model with 3 components"""
@@ -53,7 +44,6 @@ class MixtureModel(Model):
         shape = (N, self.d, 3)
 
         X = zeros(shape)
-        #X = self._allocate_samples("X", shape)
         # Get a random permutation of N elements
         perm = permutation(N)
 
@@ -181,14 +171,14 @@ class MixtureModel(Model):
             w = dirichlet(ones(k) * dirichlet_scale)
         elif weights == "uniform":
             w = ones(k)/k
-        elif isinstance(weights, sc.ndarray):
+        elif isinstance(weights, ndarray):
             w = weights
         else:
             raise NotImplementedError
 
         if means == "random":
             M = dirichlet(ones(d) * dirichlet_scale, k).T
-        elif isinstance(means, sc.ndarray):
+        elif isinstance(means, ndarray):
             M = means
         else:
             raise NotImplementedError
