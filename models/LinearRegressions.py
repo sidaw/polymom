@@ -100,6 +100,10 @@ class LinearRegressionsMixture(Model):
         self.sym_betas = sp.symbols('b1:'+str(self.d+1))
         self.sym_obs = sp.symbols('x1:'+str(self.d+1) + 'y')
 
+    def param_symbols(self):
+        """Symbols"""
+        return self.sym_betas
+
     @staticmethod
     def from_file(fname):
         """Load model from a HDF file"""

@@ -67,6 +67,12 @@ class Model:
             model.set_seed(model["seed"])
         return model
 
+    def param_symbols(self):
+        """
+        Symbols
+        """
+        return NotImplementedError
+
     def exact_moments(self, terms):
         """
         Compute exact moments for terms

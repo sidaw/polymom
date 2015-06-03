@@ -3,6 +3,7 @@ Generate data from a three-view mixture model
 """
 
 import sympy as sp
+from sympy import sympify
 import scipy as sc
 import scipy.linalg
 from scipy import array, zeros, ones, eye, allclose, ndarray
@@ -13,7 +14,7 @@ multinomial = sc.random.multinomial
 multivariate_normal = sc.random.multivariate_normal
 dirichlet = sc.random.dirichlet
 
-from util import permutation
+from util import permutation, monomial
 
 class MixtureModel(Model):
     """Generic mixture model with 3 components"""
@@ -31,6 +32,9 @@ class MixtureModel(Model):
         # symbolic means and observed variables
         self.sym_means = sp.symbols('x1:'+str(self.d+1))
         self.sym_obs = self.sym_means
+
+    def param_symbols(self):
+        return self.sym_means
 
     @staticmethod
     def from_file(fname):
