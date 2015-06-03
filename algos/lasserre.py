@@ -33,7 +33,6 @@ def solve_mixture_model(model, data, maxdeg=3):
     syms = model.param_symbols()
     sol = do_lasserre(model, data)
     params = array([sol[sym][0] for sym in syms])
-    ipdb.set_trace()
     print "pre", params
     params = array([make_distribution(col) for col in params.T]).T
 

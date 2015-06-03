@@ -40,14 +40,14 @@ def do_tpm(model, data):
     if isinstance(model, MixtureModel):
         return spectral.solve_mixture_model(model, data)
 
-def do_em(model, data, iters = 10):
+def do_em(model, data, iters = 1):
     if isinstance(model, MixtureModel):
         em_fn = em.solve_mixture_model
     else:
         raise NotImplementedError
 
     w_em, params_em, lhood_em = None, None, -np.inf
-    for _ in xrange(10):
+    for _ in xrange(iters):
         w_em_, params_em_ = em_fn(model, data)
         lhood_em_ = model.using(M=params_em_, w=w_em_).llikelihood(data)
         if lhood_em_ > lhood_em:
@@ -79,7 +79,8 @@ def do_command(args):
     model = MixtureModel.generate(k = 2, d = 2)
     data = model.sample(int(args.N))
     #methods = [("EM", do_em), ("TPM", do_tpm), ("Lasserre", do_lasserre), ("Dreesen", do_dreesen)]
-    methods = [("EM", do_em), ("TPM", do_tpm),("Lasserre", do_lasserre)] #, ("Dreesen", do_dreesen)]
+    #methods = [("EM", do_em), ("TPM", do_tpm),("Lasserre", do_lasserre)] #, ("Dreesen", do_dreesen)]
+    methods = [("TPM", do_tpm),("Lasserre", do_lasserre)] #, ("Dreesen", do_dreesen)]
     tbl = make_table(model, data, methods)
 
     print_table(tbl)

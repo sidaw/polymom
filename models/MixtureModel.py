@@ -97,11 +97,22 @@ class MixtureModel(Model):
                 idx += 1
         return moment
 
+    def _compute_empirical_power_(self, xs, alpha):
+        """Assumes enough views to compute powers"""
+        moment = 1.
+        N,D,V = xs.shape
+        assert sum(alpha) <= V
+        idx = 0
+        for i, power in enumerate(alpha):
+            for _ in xrange(power):
+                moment *= xs[:,i,idx]
+                idx += 1
+        return moment if isinstance(moment, float) else float(moment.mean())
+
     def exact_moments(self, terms):
         """
         Get the exact moments corresponding to a particular term
         """
-
         terms = [sp.sympify(term) if isinstance(term, str) else term for term in terms]
 
         moment = {term : 0. for term in terms}
@@ -110,14 +121,33 @@ class MixtureModel(Model):
                 moment[term] += self.weights[k] * self._compute_power(term, self.means.T[k])
         return moment
 
-    def empirical_moments(self, xs, terms):
+    def _empirical_moments(self, xs, terms):
         """
         Get the exact moments corresponding to a particular term
         """
+        terms = [sp.sympify(term) if isinstance(term, str) else term for term in terms]
+
         moment = {term : 0. for term in terms}
         for i, x in enumerate(xs):
             for term in terms:
                 moment[term] += (self._compute_empirical_power(term, x) - moment[term])/(i+1)
+        return moment
+
+    def _x_power(self, term):
+        """Get powers of x from term"""
+
+        powers = term.as_powers_dict()
+        return tuple(powers[sympify('x%d'%(i+1))] for i in xrange(self.d))
+
+    def empirical_moments(self, xs, terms):
+        """
+        Get the exact moments corresponding to a particular term
+        """
+        terms = [sp.sympify(term) if isinstance(term, str) else term for term in terms]
+
+        moment = {term : 0. for term in terms}
+        for term in terms:
+            moment[term] = self._compute_empirical_power_(xs, self._x_power(term))
         return moment
 
     def _moment_equations(self, term):
