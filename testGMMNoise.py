@@ -12,6 +12,7 @@ import sys
 from operator import mul
 import sympy as sp
 from collections import Counter
+import models.GaussianMixtures
 
 from cvxopt import solvers
 solvers.options['show_progress'] = False
@@ -108,22 +109,22 @@ def M_true(gm, X):
     C_ = sc.random.permutation(sc.row_stack(Clist))
     return M_, C_
 
-def test_all_methods():
-    k = 2
-    d = 2
-    numsamp = 1000
-    typemean = 'rotatedhypercube'
-    typecov = 'spherical'
-    numtrials = 1
-    sc.random.seed(105)
+def test_all_methods(args):
+    k = args.k
+    d = args.d
+    numsamp = args.N
+    typemean = args.typemean #'rotatedhypercube'
+    typecov = args.typecov
+    numtrials = args.trials
+    sc.random.seed(args.seed)
     
     estimators = [M_EM, M_Spectral, M_polymom, M_true]
-    estimators = [M_EM,  M_Spectral, M_polymomconvexiter, M_polymom, M_true]
+    estimators = [M_EM,  M_Spectral, M_polymom, M_true]
     totalerror = Counter()
     totalerrorC = Counter()
 
     for j in xrange(numtrials):
-        gm = models.GaussianMixtureModel.generate('', k, d, means=typemean, cov=typecov, gaussian_precision=1)
+        gm = models.GaussianMixtures.GaussianMixtureModel.generate('', k, d, means=typemean, cov=typecov, gaussian_precision=1)
         X = gm.sample(numsamp)
         Mstar = gm.means.T
 
@@ -151,11 +152,31 @@ def test_all_methods():
         print '___'
     print 'k=%d\td=%d\tnumsamp=%d\tmean=%s\tcov=%s\tnumtrial=%d' % \
       (k,d,numsamp, typemean, typecov, numtrials)
+    print args
     print totalerror
     #print totalerrorC
     print gm.sigmas
+    
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser( description='' )
+    parser.add_argument( '--seed', type=int, default=0, help="" )
+    parser.add_argument( '--N', type=float, default=1e4, help="" )
+    parser.add_argument( '--trials', type=int, default=1, help="" )
+    parser.add_argument( '--k', type=int, default=3, help="" )
+    parser.add_argument( '--d', type=int, default=3, help="" )
+    parser.add_argument( '--typemean', type=str, default='hypercube', help="hypercube,random,rotatedhypercube" )
+    parser.add_argument( '--typecov', type=str, default='diagonal', help="diagonal, spherical" )
+    #parser.set_defaults(func=do_command)
 
-test_all_methods()
+    #subparsers = parser.add_subparsers()
+    #command_parser = subparsers.add_parser('command', help='' )
+    #command_parser.set_defaults(func=do_command)
+
+    args = parser.parse_args()
+    #ARGS.func(ARGS)
+
+    test_all_methods(args)
 
 
         
