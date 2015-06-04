@@ -24,9 +24,9 @@ def make_distribution(vec):
 def do_lasserre(model, data, maxdeg=3):
     eqns = model.empirical_moment_equations(data, maxdeg)
     syms = model.param_symbols()
-    M = MomentMatrix(2, syms, morder='grevlex')
+    M = MomentMatrix(3, syms, morder='grevlex')
     solsdp = solvers.solve_generalized_mom_coneqp(M, eqns, None)
-    #solsdp = solvers.solve_basic_constraints(M, eqns, slack=0)
+    #solsdp = solvers.solve_basic_constraints(M, eqns, slack=1e-5)
     sol = extractors.extract_solutions_lasserre(M, solsdp['x'], Kmax=model.k, tol=1e-5)
     #sol = extractors.extract_solutions_dreesen(M, solsdp['x'], Kmax=model.k)
     #sol = extractors.extract_solutions_dreesen_proto(M, solsdp['x'], Kmax=model.k)

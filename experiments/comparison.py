@@ -83,7 +83,7 @@ def do_command(args):
     methods = [("EM", do_em), ("TPM", do_tpm),("Lasserre", do_lasserre)] #, ("Dreesen", do_dreesen)]
     avg_paramserror = Counter(); avg_nll = Counter();
     for i in xrange(args.trials):
-        model = MixtureModel.generate(k = 2, d = 2)
+        model = MixtureModel.generate(k = args.k, d = args.d)
         data = model.sample(int(args.N))
         tbl = make_table(model, data, methods)
         for mname,_ in methods:
@@ -103,8 +103,8 @@ if __name__ == "__main__":
     parser.add_argument( '--seed', type=int, default=0, help="" )
     parser.add_argument( '--N', type=float, default=1e4, help="" )
     parser.add_argument( '--trials', type=int, default=1, help="" )
-    parser.add_argument( '--comp', type=int, default=3, help="" )
-    parser.add_argument( '--dim', type=int, default=3, help="" )
+    parser.add_argument( '--k', type=int, default=3, help="" )
+    parser.add_argument( '--d', type=int, default=3, help="" )
     
     parser.set_defaults(func=do_command)
 
