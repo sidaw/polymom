@@ -6,6 +6,7 @@ import util
 from util import *
 import numpy as np
 import models
+import models.GaussianMixtures
 import mompy as mp
 import cvxopt
 import sys
@@ -123,7 +124,7 @@ def test_all_methods():
     totalerrorC = Counter()
 
     for j in xrange(numtrials):
-        gm = models.GaussianMixtureModel.generate('', k, d, means=typemean, cov=typecov, gaussian_precision=1)
+        gm = models.GaussianMixtures.GaussianMixtureModel.generate(k, d, means=typemean, cov=typecov, gaussian_precision=1)
         X = gm.sample(numsamp)
         Mstar = gm.means.T
 
