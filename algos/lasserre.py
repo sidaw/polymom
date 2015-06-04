@@ -24,15 +24,18 @@ def make_distribution(vec):
 def do_lasserre(model, data, maxdeg=3):
     eqns = model.empirical_moment_equations(data, maxdeg)
     syms = model.param_symbols()
-    M = MomentMatrix(maxdeg, syms, morder='grevlex')
+    M = MomentMatrix(2, syms, morder='grevlex')
     solsdp = solvers.solve_generalized_mom_coneqp(M, eqns, None)
-    sol = extractors.extract_solutions_dreesen(M, solsdp['x'], Kmax=model.k)
+    #solsdp = solvers.solve_basic_constraints(M, eqns, slack=0)
+    sol = extractors.extract_solutions_lasserre(M, solsdp['x'], Kmax=model.k, tol=1e-5)
+    #sol = extractors.extract_solutions_dreesen(M, solsdp['x'], Kmax=model.k)
+    #sol = extractors.extract_solutions_dreesen_proto(M, solsdp['x'], Kmax=model.k)
     return sol
 
 def solve_mixture_model(model, data, maxdeg=3):
     syms = model.param_symbols()
     sol = do_lasserre(model, data)
-    params = array([sol[sym][0] for sym in syms])
+    params = array([sol[sym] for sym in syms])
     print "pre", params
     params = array([make_distribution(col) for col in params.T]).T
 

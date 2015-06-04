@@ -8,6 +8,7 @@ import ipdb
 import numpy as np
 from numpy import array
 from numpy.linalg import norm
+import util
 from util import fix_parameters, column_rerr
 import csv
 import sys
@@ -18,13 +19,15 @@ from mompy.core import MomentMatrix
 import mompy.solvers as solvers
 import mompy.extractors as extractors
 
+from collections import Counter
+
 def make_distribution(vec):
     return abs(vec) / abs(vec).sum()
 
 def do_dreesen(model, data, maxdeg=3):
     eqns = model.empirical_moment_equations(data, maxdeg)
     syms = model.param_symbols()
-    M = MomentMatrix(maxdeg, syms, morder='grevlex')
+    M = MomentMatrix(2, syms, morder='grevlex')
     solsdp = solvers.solve_generalized_mom_coneqp(M, eqns, None)
     sol = extractors.extract_solutions_lasserre(M, solsdp['x'], Kmax=model.k)
     params = array([sol[sym][0] for sym in syms])
@@ -75,21 +78,34 @@ def print_table(arr):
 
 def do_command(args):
     np.random.seed(args.seed)
-
-    model = MixtureModel.generate(k = 2, d = 2)
-    data = model.sample(int(args.N))
     #methods = [("EM", do_em), ("TPM", do_tpm), ("Lasserre", do_lasserre), ("Dreesen", do_dreesen)]
     #methods = [("EM", do_em), ("TPM", do_tpm),("Lasserre", do_lasserre)] #, ("Dreesen", do_dreesen)]
-    methods = [("TPM", do_tpm),("Lasserre", do_lasserre)] #, ("Dreesen", do_dreesen)]
-    tbl = make_table(model, data, methods)
-
-    print_table(tbl)
+    methods = [("EM", do_em), ("TPM", do_tpm),("Lasserre", do_lasserre)] #, ("Dreesen", do_dreesen)]
+    avg_paramserror = Counter(); avg_nll = Counter();
+    for i in xrange(args.trials):
+        model = MixtureModel.generate(k = 2, d = 2)
+        data = model.sample(int(args.N))
+        tbl = make_table(model, data, methods)
+        for mname,_ in methods:
+            for row in tbl:
+                if row[0] == mname:
+                    avg_paramserror[mname] += row[1]/args.trials
+                    avg_nll[mname] += row[2]/args.trials
+            
+        print_table(tbl)
+        print avg_paramserror
+        print avg_nll
+        print args
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser( description='' )
     parser.add_argument( '--seed', type=int, default=0, help="" )
     parser.add_argument( '--N', type=float, default=1e4, help="" )
+    parser.add_argument( '--trials', type=int, default=1, help="" )
+    parser.add_argument( '--comp', type=int, default=3, help="" )
+    parser.add_argument( '--dim', type=int, default=3, help="" )
+    
     parser.set_defaults(func=do_command)
 
     #subparsers = parser.add_subparsers()
