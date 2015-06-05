@@ -378,3 +378,15 @@ Namespace(N=100000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean=
 Counter({'M_Spectral': 3.0184407546615368, 'M_EM': 0.34310918890849168, 'M_polygmm': 0.28871526550992344, 'M_true': 0.0})
 0.34 & 3.02 & 0.29 &
 ****************
+
+Namespace(N=10000.0, d=3, k=2, seed=1, trials=2, typecov='spherical', typemean='hypercubenoise')
+Counter({'M_polygmm': 128.27916454012399, 'M_EM': 0.62506906928118133, 'M_true': 0.0})
+****************
+
+Namespace(N=10000.0, d=3, k=2, seed=1, trials=2, typecov='spherical', typemean='hypercubenoise')
+Counter({'M_polygmm': 71.831421024265168, 'M_EM': 0.86068506551913826, 'M_true': 0.0})
+****************
+
+Namespace(N=10000.0, d=3, k=2, seed=1, trials=2, typecov='spherical', typemean='hypercubenoise')
+Counter({'M_polygmm': 91.231528807211959, 'M_EM': 0.86068506551913826, 'M_true': 0.0})
+****************

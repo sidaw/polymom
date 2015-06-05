@@ -20,7 +20,7 @@ from cvxopt import solvers
 solvers.options['show_progress'] = True
 DEGMM = 3
 DEGOB = 3
-SPHERICAL = False
+SPHERICAL = True
 
 def get_sumto1constraints(syms, maxdeg = 4):
     if maxdeg < 0: return []
@@ -156,7 +156,7 @@ def test_all_methods(args):
     sc.random.seed(args.seed)
     
     estimators = [M_EM, M_Spectral, M_polymom, M_true]
-    estimators = [M_EM, M_Spectral, M_polygmm, M_true]
+    estimators = [M_EM, M_polygmm, M_true]
     totalerror = Counter()
     totalerrorC = Counter()
 
@@ -196,7 +196,7 @@ def test_all_methods(args):
 
     with open('resultsgmm', 'a') as f:
         f.write('\n' + str(args) + '\n' + str(totalerror) + '\n')
-        f.write('%.2f & %.2f & %.2f &\n' % (totalerror['M_EM'], totalerror['M_Spectral'], totalerror['M_polygmm']))
+        #f.write('%.2f & %.2f & %.2f &\n' % (totalerror['M_EM'], totalerror['M_Spectral'], totalerror['M_polygmm']))
         f.write('****************\n')
     #print totalerrorC
     print gm.sigmas
