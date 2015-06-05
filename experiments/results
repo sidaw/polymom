@@ -43,3 +43,14 @@ Counter({'M_Spectral': 4.0746287321696428, 'M_EM': 0.87960802292924511, 'M_polyg
 Namespace(N=100000.0, d=3, k=3, seed=0, trials=10, typecov='diagonal', typemean='hypercubenoise')
 Counter({'M_Spectral': 4.4815185321784856, 'M_EM': 0.79436198132007119, 'M_polygmm': 0.38889865185299977, 'M_polymom': 0.24690659694839265, 'M_true': 0.0})
 0.79 & 4.5 & 0.25
+
+*************SPHERICAL GAUSSIAN **************
+Namespace(N=1000.0, d=3, k=3, seed=0, trials=10, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_polygmm': 6.4340436083784409, 'M_polymom': 0.21931988762606477, 'M_Spectral': 0.085653658002019503, 'M_EM': 0.052754400493161484, 'M_true': 0.0})
+****************
+0.053 & 0.086 & 0.22 
+
+Namespace(N=10000.0, d=3, k=3, seed=0, trials=10, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_polygmm': 0.20238797941005329, 'M_EM': 0.045588805593616256, 'M_polymom': 0.041892280442470099, 'M_Spectral': 0.0372862038266039, 'M_true': 0.0})
+****************
+0.046 & 0.037 & 0.042

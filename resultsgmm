@@ -114,3 +114,197 @@ Counter({'M_Spectral': 5.2671831397227473, 'M_polygmm': 1.6983041448013236, 'M_E
 Namespace(N=1000.0, d=3, k=3, seed=0, trials=10, typecov='spherical', typemean='random')
 Counter({'M_Spectral': 50.667560740759889, 'M_polygmm': 0.64409723049256551, 'M_EM': 0.049693602796524607, 'M_true': 0.0})
 ****************
+
+Namespace(N=1000.0, d=3, k=3, seed=0, trials=10, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_polygmm': 6.4340436083784409, 'M_polymom': 0.21931988762606477, 'M_Spectral': 0.085653658002019503, 'M_EM': 0.052754400493161484, 'M_true': 0.0})
+****************
+0.053 & 0.086 & 0.22 
+
+Namespace(N=10000.0, d=3, k=3, seed=0, trials=10, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_polygmm': 0.20238797941005329, 'M_EM': 0.045588805593616256, 'M_polymom': 0.041892280442470099, 'M_Spectral': 0.0372862038266039, 'M_true': 0.0})
+****************
+0.046 & 0.037 & 0.042
+
+Namespace(N=100000.0, d=3, k=3, seed=0, trials=10, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_polygmm': 0.10476159598740159, 'M_polymom': 0.062230782259352385, 'M_EM': 0.014605792213027899, 'M_Spectral': 0.007648125419997813, 'M_true': 0.0})
+****************
+
+Namespace(N=1000.0, d=3, k=3, seed=0, trials=10, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_polygmm': 6.43404360837844, 'M_polymom': 0.21931988762606477, 'M_Spectral': 0.085653658002019503, 'M_EM': 0.052754400493161484, 'M_true': 0.0})
+****************
+
+Namespace(N=1000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_polygmm': 0.32529148470068497, 'M_Spectral': 0.090137350004447947, 'M_polymom': 0.074753034292713974, 'M_EM': 0.057212842945766548, 'M_true': 0.0})
+****************
+
+Namespace(N=100000.0, d=3, k=3, seed=1, trials=2, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_polygmm': 0.30970824016867682, 'M_polymom': 0.028318906297363437, 'M_EM': 0.016077845026270767, 'M_Spectral': 0.0094635071622854779, 'M_true': 0.0})
+****************
+
+Namespace(N=100000.0, d=3, k=3, seed=1, trials=2, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_polygmm': 0.35868918513788967, 'M_polymom': 0.23229448280100023, 'M_EM': 0.10515225957843782, 'M_Spectral': 0.069508165077341588, 'M_true': 0.0})
+****************
+
+Namespace(N=100000.0, d=3, k=3, seed=1, trials=1, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_polygmm': 0.60753271489127569, 'M_polymom': 0.35178359497035261, 'M_EM': 0.10631691005913001, 'M_Spectral': 0.065129814992566357, 'M_true': 0.0})
+****************
+
+Namespace(N=100000.0, d=3, k=3, seed=1, trials=3, typecov='spherical', typemean='hypercube')
+Counter({'M_EM': 0.20991457608117858, 'M_polygmm': 0.17681045860517425, 'M_Spectral': 0.078398292773135952, 'M_polymom': 0.009787906999682126, 'M_true': 0.0})
+****************
+
+Namespace(N=100000.0, d=3, k=3, seed=1, trials=3, typecov='spherical', typemean='hypercubenoise')
+Counter({'M_polymom': 0.2542220974427517, 'M_polygmm': 0.22290228161970047, 'M_EM': 0.19520610555137691, 'M_Spectral': 0.19243668548799148, 'M_true': 0.0})
+****************
+
+Namespace(N=100000.0, d=3, k=3, seed=1, trials=3, typecov='spherical', typemean='hypercube')
+Counter({'M_EM': 0.20991457608117858, 'M_polygmm': 0.17681045860517647, 'M_Spectral': 0.078398292773135952, 'M_polymom': 0.009787906999682126, 'M_true': 0.0})
+****************
+
+Namespace(N=1000.0, d=3, k=3, seed=1, trials=3, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 1.6636338607442305, 'M_polygmm': 0.77514647382513013, 'M_EM': 0.31217212472138717, 'M_polymom': 0.013578246445098308, 'M_true': 0.0})
+****************
+
+Namespace(N=1000.0, d=3, k=3, seed=1, trials=3, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 1.6636338607442305, 'M_polygmm': 0.5967398733669993, 'M_EM': 0.31217212472138717, 'M_polymom': 0.19911631071617883, 'M_true': 0.0})
+****************
+
+Namespace(N=10000.0, d=3, k=3, seed=1, trials=3, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 0.40618579728790216, 'M_polygmm': 0.21275135997975697, 'M_EM': 0.16684687856015812, 'M_polymom': 0.099933308119347058, 'M_true': 0.0})
+****************
+
+Namespace(N=1000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 1.6773601291026883, 'M_polygmm': 0.58738411015354886, 'M_EM': 0.39634231849257207, 'M_polymom': 0.237404558913548, 'M_true': 0.0})
+****************
+
+Namespace(N=10000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 0.51230327290983446, 'M_polygmm': 0.43945000927600175, 'M_polymom': 0.31803630909247355, 'M_EM': 0.23931326821535504, 'M_true': 0.0})
+****************
+
+Namespace(N=100000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_polygmm': 0.30528465853786868, 'M_polymom': 0.2597726378119749, 'M_Spectral': 0.20352774780676358, 'M_EM': 0.19013220010319526, 'M_true': 0.0})
+****************
+
+Namespace(N=100.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 2095.6934012533156, 'M_polygmm': 1.1336190514689601, 'M_EM': 1.0439316428372225, 'M_polymom': 0.35409474134195285, 'M_true': 0.0})
+****************
+
+Namespace(N=100.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 6.2720455851790815, 'M_polygmm': 1.8437949454113185, 'M_EM': 1.2543734732737883, 'M_polymom': 1.823917758101733e-06, 'M_true': 0.0})
+****************
+
+Namespace(N=100.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_Spectral': 7.784105681282445, 'M_polygmm': 2.3372881037832234, 'M_EM': 1.1773386825854102, 'M_polymom': 0.005918430368235532, 'M_true': 0.0})
+****************
+
+Namespace(N=100.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercubenoise')
+Counter({'M_Spectral': 5.3840683057840604, 'M_polygmm': 1.8072612412751918, 'M_EM': 1.1549494627010999, 'M_polymom': 1.8831497327540518e-06, 'M_true': 0.0})
+****************
+
+Namespace(N=100.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercubenoise')
+Counter({'M_Spectral': 5.3840683057840604, 'M_polygmm': 1.8072612412751914, 'M_EM': 1.1549494627010999, 'M_polymom': 1.8831497327540518e-06, 'M_true': 0.0})
+****************
+
+Namespace(N=1000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercubenoise')
+Counter({'M_Spectral': 1.5253368417101865, 'M_polygmm': 0.65644343349787815, 'M_EM': 0.43828313785182471, 'M_polymom': 3.9317110888984582e-07, 'M_true': 0.0})
+****************
+
+Namespace(N=1000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercubenoise')
+Counter({'M_Spectral': 1.5253368417101865, 'M_polygmm': 0.6564434334978787, 'M_polymom': 0.59005014712614834, 'M_EM': 0.43828313785182471, 'M_true': 0.0})
+****************
+
+Namespace(N=1000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_Spectral': 1.3398902455783139, 'M_polygmm': 0.99466123077451152, 'M_polymom': 0.63005369797597166, 'M_EM': 0.45094832720481104, 'M_true': 0.0})
+****************
+
+Namespace(N=10000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='rotatedhypercube')
+Counter({'M_polygmm': 1.0938829454585175, 'M_polymom': 1.0513870598814243, 'M_Spectral': 0.46394754341845429, 'M_EM': 0.29258815699867874, 'M_true': 0.0})
+****************
+
+Namespace(N=10000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 0.45478995402397904, 'M_polymom': 0.23476589608099818, 'M_polygmm': 0.21829509980582401, 'M_EM': 0.19855023993279125, 'M_true': 0.0})
+****************
+
+Namespace(N=1000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 1.8309150391924378, 'M_polygmm': 0.69781115818700845, 'M_polymom': 0.68604446558368182, 'M_EM': 0.43736994809298574, 'M_true': 0.0})
+****************
+
+Namespace(N=100000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_EM': 0.19600780626676287, 'M_polymom': 0.13476821062313971, 'M_Spectral': 0.10802679395033112, 'M_polygmm': 0.1068024392466726, 'M_true': 0.0})
+****************
+
+Namespace(N=1000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercubenoise')
+Counter({'M_Spectral': 1.5253368417101865, 'M_polygmm': 0.65644343349788037, 'M_polymom': 0.59005014712614834, 'M_EM': 0.43828313785182471, 'M_true': 0.0})
+
+Namespace(N=1000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercubenoise')
+Counter({'M_Spectral': 82.170313539316638, 'M_polymom': 1.6496359794855251, 'M_polygmm': 1.4787409979575621, 'M_EM': 1.2301820009323556, 'M_true': 0.0})
+1.23 & 82.17 & 1.48 &
+****************
+
+Namespace(N=10000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercubenoise')
+Counter({'M_Spectral': 2.7572917622133968, 'M_polygmm': 1.142529470165687, 'M_polymom': 1.0804477932205745, 'M_EM': 0.69054709981077478, 'M_true': 0.0})
+0.69 & 2.76 & 1.14 &
+****************
+
+Namespace(N=10000.0, d=3, k=3, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 2.8657235624323905, 'M_polygmm': 1.2599970870849255, 'M_polymom': 1.1864278327909354, 'M_EM': 0.75486233031284022, 'M_true': 0.0})
+0.75 & 2.87 & 1.26 &
+****************
+
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 3.3594336236818494, 'M_polymom': 0.90124417163354376, 'M_polygmm': 0.80610645381314217, 'M_EM': 0.56782331202793423, 'M_true': 0.0})
+0.57 & 3.36 & 0.81 &
+****************
+
+Namespace(N=10000.0, d=2, k=2, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 1.3743454086064852, 'M_polygmm': 0.51104331374574019, 'M_polymom': 0.48702713587887875, 'M_EM': 0.3482638087347425, 'M_true': 0.0})
+0.35 & 1.37 & 0.51 &
+****************
+
+Namespace(N=10000.0, d=2, k=2, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 0.72697384334709414, 'M_polymom': 0.29686755445563273, 'M_polygmm': 0.29447822815364844, 'M_EM': 0.23810102868868005, 'M_true': 0.0})
+0.24 & 0.73 & 0.29 &
+****************
+
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 2.0508416590596745, 'M_polymom': 0.68555089013097392, 'M_polygmm': 0.58038989942199581, 'M_EM': 0.36777706311100949, 'M_true': 0.0})
+0.37 & 2.05 & 0.58 &
+****************
+
+Namespace(N=100000.0, d=2, k=2, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 0.35584226844284605, 'M_EM': 0.1863715501716641, 'M_polymom': 0.17371205456684208, 'M_polygmm': 0.13733866498264269, 'M_true': 0.0})
+0.19 & 0.36 & 0.14 &
+****************
+
+Namespace(N=10000.0, d=2, k=2, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 0.72697384334709414, 'M_polymom': 0.29686755445562146, 'M_polygmm': 0.2944782281536481, 'M_EM': 0.23810102868868005, 'M_true': 0.0})
+0.24 & 0.73 & 0.29 &
+****************
+
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='spherical', typemean='hypercube')
+Counter({'M_Spectral': 2.0508416590596745, 'M_polymom': 0.68555089013097759, 'M_polygmm': 0.58038989942199548, 'M_EM': 0.36777706311100949, 'M_true': 0.0})
+0.37 & 2.05 & 0.58 &
+****************
+
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='hypercube')
+Counter({'M_Spectral': 2.1536358508851916, 'M_polygmm': 0.48026653798471175, 'M_polymom': 0.45988366479071235, 'M_EM': 0.44298521626015697, 'M_true': 0.0})
+0.44 & 2.15 & 0.48 &
+****************
+
+Namespace(N=10000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='hypercube')
+Counter({'M_Spectral': 4.0294190052004577, 'M_EM': 0.48453969766274063, 'M_polymom': 0.39973142934335043, 'M_polygmm': 0.39922982938469637, 'M_true': 0.0})
+0.48 & 4.03 & 0.40 &
+****************
+
+Namespace(N=100000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='hypercube')
+Counter({'M_Spectral': 2.4641375561788812, 'M_EM': 0.37838020821147339, 'M_polymom': 0.35068799628848996, 'M_polygmm': 0.3464565151327772, 'M_true': 0.0})
+0.38 & 2.46 & 0.35 &
+****************
+
+0.44 & 2.15 & 0.48 &
+0.48 & 4.03 & 0.40 &
+0.38 & 2.46 & 0.35 \\
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='constrained')
+Counter({'M_Spectral': 2.6620285682348461, 'M_EM': 0.45021556297710302, 'M_polygmm': 0.43773744591793567, 'M_polymom': 0.43466176646661669, 'M_true': 0.0})
+0.45 & 2.66 & 0.44 &
+****************

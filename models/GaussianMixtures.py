@@ -34,11 +34,7 @@ class GaussianMixtureModel(Model):
         self.weights = self["w"]
         self.means = self["M"]
         self.sigmas = self["S"]
-
-        # symbolica means and covs
-        self.sym_means = sp.symbols('xi1:'+str(self.d+1))
-        self.sym_covs =  sp.symbols('c1:'+str(self.d+1))
-
+        
     @staticmethod
     def from_file(fname):
         """Load model from a HDF file"""
@@ -105,9 +101,21 @@ class GaussianMixtureModel(Model):
         
         expr = 1
         for dim,deg in dimtodeg.items():
-            expr = expr * (GaussianMixtureModel.polymom_univariate(xis[dim-1], covs[dim-1], deg))
+            if len(covs) == 1:
+                expr = expr * (GaussianMixtureModel.polymom_univariate(xis[dim-1], covs[0], deg))
+            else:
+                expr = expr * (GaussianMixtureModel.polymom_univariate(xis[dim-1], covs[dim-1], deg))
         return expr.expand()
 
+    def polymom_init_symbols(self, spherical = False):
+        # symbolica means and covs
+        self.spherical = spherical
+        self.sym_means = sp.symbols('xi1:'+str(self.d+1))
+        if not spherical:
+            self.sym_covs =  sp.symbols('c1:'+str(self.d+1))
+        else:
+            self.sym_covs =  tuple([sp.symbols('c1')])
+            
     def polymom_all_expressions(self, maxdeg):
         # xis are the means of the Gaussian
         d = self.d
@@ -157,7 +165,8 @@ class GaussianMixtureModel(Model):
         """ return monomials needed to fit this model
         """
         import sympy.polys.monomials as mn
-        allvars = self.sym_means + self.sym_covs
+        #ipdb.set_trace()
+        allvars = self.sym_means+self.sym_covs
         rawmonos = mn.itermonomials(allvars, deg)
         
         # filter out anything whose total degree in cov is greater than deg
@@ -200,6 +209,7 @@ class GaussianMixtureModel(Model):
                 for i,inds in enumerate(allinds):
                     if i == k: break
                     M[inds, i] = 1
+                M = M + 0.02*sc.rand(d,k)
             else:
                 raise NotImplementedError
         elif means == "hypercubenoise":
@@ -213,6 +223,23 @@ class GaussianMixtureModel(Model):
                     if i == k: break
                     M[inds, i] = 1
                 M = M + 0.1*sc.rand(d,k)
+            else:
+                raise NotImplementedError
+        elif means == "constrained":
+            # Place means at the vertices of the hypercube
+            M = zeros((d, k))
+            if k <= 2**d:
+                # the minimum number of ones needed to fill k of them
+                numones = int(sc.ceil(sc.log(k)/sc.log(d)))
+                allinds = combinations(range(d), numones)
+                for i,inds in enumerate(allinds):
+                    if i == k: break
+                    M[inds, i] = 1
+                cnstr = 0.1*sc.rand(d,k)
+                cnstrnormal = np.sum(cnstr,1)
+                pert0 = cnstr - cnstrnormal
+                assert(np.sum(pert0) <= 1e-5)
+                M = M + pert0
             else:
                 raise NotImplementedError
         elif means == "rotatedhypercube":
@@ -242,9 +269,10 @@ class GaussianMixtureModel(Model):
             # Using 1/gamma instead of inv_gamma
             sigmas = []
             for i in xrange(k):
-                sigmak = 3*sc.random.rand()+1
+                sigmak = 2*sc.random.rand()+2
                 sigmas = sigmas + [ sigmak * eye(d) ]
             S = array(sigmas)
+
         elif cov == "spherical_uniform":
             # Using 1/gamma instead of inv_gamma
             sigma = 1/sc.random.gamma(1/gaussian_precision)
