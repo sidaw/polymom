@@ -17,8 +17,10 @@ import models.GaussianMixtures
 
 from cvxopt import solvers
 solvers.options['show_progress'] = False
+DEGMM = 3
+DEGOB = 4
 
-def M_polygmm(gm, X, degmm=3, degobs=5):
+def M_polygmm(gm, X, degmm=DEGMM, degobs=DEGOB):
     tol= 1e-2
     k = gm.k
     
@@ -46,7 +48,7 @@ def M_polygmm(gm, X, degmm=3, degobs=5):
     C_ = sc.column_stack(Clist)
     return M_,C_
 
-def M_polymom(gm, X, degmm=3, degobs=5):
+def M_polymom(gm, X, degmm=DEGMM, degobs=DEGOB):
     tol= 1e-2
     k = gm.k
     
@@ -56,22 +58,7 @@ def M_polymom(gm, X, degmm=3, degobs=5):
     covs = gm.sym_covs
     sym_all = xis + covs
     MM = mp.MomentMatrix(degmm, sym_all, morder='grevlex', monos=monos)
-    constraints_noisy = gm.polymom_all_constraints_samples(degobs, X)
-
-    cin = mp.solvers.get_cvxopt_inputs(MM, constraints_noisy)
-
-    for i in xrange(1):
-        randdir =cvxopt.matrix( np.random.rand(*cin['c'].size) )
-        solsdp_noisy = solvers.sdp(cin['c'], Gs=cin['G'], hs=cin['h'], A=cin['A'], b=cin['b'])
-        soln = np.array(solsdp_noisy['ss'][0])
-
-        Us,Sigma,Vs=np.linalg.svd(soln)
-
-        if Sigma[k] <= tol:
-            break
-        else:
-            pass
-            #print '%.4f' % Sigma[k]
+    solsdp_noisy = mp.solvers.solve_basic_constraints(MM, constraints, slack = 1e-5)
         
     #sol_noisy = mp.extractors.extract_solutions_dreesen_proto(MM, solsdp_noisy['x'], Kmax = k)
     sol_noisy = mp.extractors.extract_solutions_lasserre(MM, solsdp_noisy['x'], Kmax = k)
@@ -126,7 +113,7 @@ def M_Spectral(gm, X):
 def M_EM(gm, X):
     from sklearn import mixture
     k = gm.k
-    sklgmm = mixture.GMM(n_components=k, covariance_type='spherical', n_init=5, n_iter = 10, thresh = 1e-2)
+    sklgmm = mixture.GMM(n_components=k, covariance_type='diag', n_init=5, n_iter = 10, thresh = 1e-2)
     sklgmm.fit(X)
     return sklgmm.means_, sklgmm.covars_
 
@@ -148,13 +135,14 @@ def test_all_methods(args):
     sc.random.seed(args.seed)
     
     estimators = [M_EM, M_Spectral, M_polymom, M_true]
-    estimators = [M_EM,  M_Spectral, M_polymom, M_polygmm, M_true]
+    estimators = [M_EM, M_Spectral, M_polymom, M_polygmm, M_true]
     totalerror = Counter()
     totalerrorC = Counter()
 
     for j in xrange(numtrials):
         gm = models.GaussianMixtures.GaussianMixtureModel.generate(k, d, means=typemean, cov=typecov, gaussian_precision=1)
         X = gm.sample(numsamp)
+        print 'finished sampling'
         Mstar = gm.means.T
 
         for i,theta_hat in enumerate(estimators):
@@ -170,7 +158,8 @@ def test_all_methods(args):
             #Vstar = Mstar[:,0]
             #V_ = closest_permuted_vector(Vstar, M_[:,0])
             print M_
-            totalerror[theta_hat.func_name] += norm( Mstar - M_ )**2 / numtrials
+            #totalerror[theta_hat.func_name] += norm( Mstar - M_ )**2 / numtrials
+            totalerror[theta_hat.func_name] += column_rerr( Mstar, M_ ) / numtrials
         
             if C_ is not None:
                 C_ = closest_permuted_matrix(Cstar, C_)

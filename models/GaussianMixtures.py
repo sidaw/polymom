@@ -65,17 +65,8 @@ class GaussianMixtureModel(Model):
             cnt = cnts[i]
             # Generate a bunch of points for each mean
             mean, sigma = self.means.T[ i ], self.sigmas[ i ]
-
-            # 1e4 is a decent block size
-            def update(start, stop):
-                """Sample random vectors and then assign them to X in
-                order"""
-                Y = multivariate_normal(mean, sigma, int(stop - start))
-                # Insert into X in a shuffled order
-                p = perm[ start:stop ]
-                perm_ = p[ p < n ]
-                X[ perm_ ] = Y[ p < n ]
-            chunked_update(update, cnt_, 10 ** 4, cnt_ + cnt )
+            perm_ = perm[cnt_ : cnt_ + cnt]
+            X[perm_] = multivariate_normal(mean, sigma, cnt)
             cnt_ += cnt
         #X.flush()
         return X
@@ -211,7 +202,19 @@ class GaussianMixtureModel(Model):
                     M[inds, i] = 1
             else:
                 raise NotImplementedError
-
+        elif means == "hypercubenoise":
+            # Place means at the vertices of the hypercube
+            M = zeros((d, k))
+            if k <= 2**d:
+                # the minimum number of ones needed to fill k of them
+                numones = int(sc.ceil(sc.log(k)/sc.log(d)))
+                allinds = combinations(range(d), numones)
+                for i,inds in enumerate(allinds):
+                    if i == k: break
+                    M[inds, i] = 1
+                M = M + 0.1*sc.rand(d,k)
+            else:
+                raise NotImplementedError
         elif means == "rotatedhypercube":
             # Place means at the vertices of the hypercube
             M = zeros((d, k))
