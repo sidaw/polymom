@@ -281,7 +281,7 @@ class GaussianMixtureModel(Model):
             # Using 1/gamma instead of inv_gamma
             sigmas = []
             for i in xrange(k):
-                sigmak = [3*sc.random.rand()+1 for i in xrange(d)]
+                sigmak = [2*sc.random.rand()+4 for i in xrange(d)]
                 sigmas = sigmas + [ sc.diag(sigmak) ]
             S = array(sigmas)
         elif isinstance(cov, sc.ndarray):

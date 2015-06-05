@@ -390,3 +390,15 @@ Counter({'M_polygmm': 71.831421024265168, 'M_EM': 0.86068506551913826, 'M_true':
 Namespace(N=10000.0, d=3, k=2, seed=1, trials=2, typecov='spherical', typemean='hypercubenoise')
 Counter({'M_polygmm': 91.231528807211959, 'M_EM': 0.86068506551913826, 'M_true': 0.0})
 ****************
+
+Namespace(N=10000.0, d=3, k=2, seed=1, trials=2, typecov='diagonal', typemean='hypercubenoise')
+Counter({'M_polygmm': 8.8069632483834894, 'M_EM': 1.7712675054985498, 'M_true': 0.0})
+****************
+
+Namespace(N=10000.0, d=3, k=3, seed=1, trials=2, typecov='diagonal', typemean='hypercubenoise')
+Counter({'M_polygmm': 1.3079615455235936, 'M_EM': 1.1871009919678521, 'M_true': 0.0})
+****************
+
+Namespace(N=100000.0, d=3, k=3, seed=1, trials=2, typecov='diagonal', typemean='hypercubenoise')
+Counter({'M_EM': 1.3975777829230169, 'M_polygmm': 1.37744267751071, 'M_true': 0.0})
+****************

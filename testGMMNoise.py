@@ -20,7 +20,7 @@ from cvxopt import solvers
 solvers.options['show_progress'] = True
 DEGMM = 3
 DEGOB = 3
-SPHERICAL = True
+SPHERICAL = False
 
 def get_sumto1constraints(syms, maxdeg = 4):
     if maxdeg < 0: return []
