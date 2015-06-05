@@ -79,7 +79,7 @@ def M_polymom(gm, X, degmm=DEGMM, degobs=DEGOB):
     sym_all = xis + covs
     MM = mp.MomentMatrix(degmm, sym_all, morder='grevlex', monos=monos)
     constraints_noisy = gm.polymom_all_constraints_samples(degobs, X) + get_sumto1constraints(xis, degobs)
-    solsdp_noisy = mp.solvers.solve_basic_constraints(MM, constraints_noisy, slack = 0)
+    solsdp_noisy = mp.solvers.solve_basic_constraints(MM, constraints_noisy, slack = 1e-5)
         
     #sol_noisy = mp.extractors.extract_solutions_dreesen_proto(MM, solsdp_noisy['x'], Kmax = k)
     sol_noisy = mp.extractors.extract_solutions_lasserre(MM, solsdp_noisy['x'], Kmax = k)
