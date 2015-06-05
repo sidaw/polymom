@@ -26,14 +26,14 @@ from collections import Counter
 
 class GaussianMixtureModel(Model):
     """Generic mixture model with N components"""
-    def __init__(self, fname, **params):
+    def __init__(self, **params):
         """Create a mixture model for components using given weights"""
-        Model.__init__(self, fname, **params)
-        self.k = self.get_parameter("k")
-        self.d = self.get_parameter("d")
-        self.weights = self.get_parameter("w")
-        self.means = self.get_parameter("M")
-        self.sigmas = self.get_parameter("S")
+        Model.__init__(self, **params)
+        self.k = self["k"]
+        self.d = self["d"]
+        self.weights = self["w"]
+        self.means = self["M"]
+        self.sigmas = self["S"]
 
         # symbolica means and covs
         self.sym_means = sp.symbols('xi1:'+str(self.d+1))
@@ -52,7 +52,8 @@ class GaussianMixtureModel(Model):
             n = N
         shape = (n, self.d)
 
-        X = self._allocate_samples("X", shape)
+        #X = self._allocate_samples("X", shape)
+        X = zeros(shape)
         # Get a random permutation of N elements
         perm = permutation(N)
 
@@ -76,7 +77,7 @@ class GaussianMixtureModel(Model):
                 X[ perm_ ] = Y[ p < n ]
             chunked_update(update, cnt_, 10 ** 4, cnt_ + cnt )
             cnt_ += cnt
-        X.flush()
+        #X.flush()
         return X
 
     def get_exact_moments(self):
@@ -179,15 +180,15 @@ class GaussianMixtureModel(Model):
         return filtered
     
     @staticmethod
-    def generate(fname, k, d, means = "hypercube", cov = "spherical",
+    def generate(k, d, means = "hypercube", cov = "spherical",
             weights = "random", dirichlet_scale = 10, gaussian_precision
             = 0.01):
         """Generate a mixture of k d-dimensional gaussians""" 
 
-        model = Model(fname)
+        params = {}
 
-        model.add_parameter("k", k)
-        model.add_parameter("d", d)
+        params["k"] = k
+        params["d"] = d
 
         if weights == "random":
             w = dirichlet(ones(k) * dirichlet_scale) 
@@ -238,7 +239,7 @@ class GaussianMixtureModel(Model):
             # Using 1/gamma instead of inv_gamma
             sigmas = []
             for i in xrange(k):
-                sigmak = 1*sc.random.rand()+1
+                sigmak = 3*sc.random.rand()+1
                 sigmas = sigmas + [ sigmak * eye(d) ]
             S = array(sigmas)
         elif cov == "spherical_uniform":
@@ -259,12 +260,12 @@ class GaussianMixtureModel(Model):
         else:
             raise NotImplementedError
 
-        model.add_parameter("w", w)
-        model.add_parameter("M", M)
-        model.add_parameter("S", S)
+        params["w"] = w
+        params["M"] = M
+        params["S"] = S
 
         # Unwrap the store and put it into the appropriate model
-        return GaussianMixtureModel(model.fname, **model.params)
+        return GaussianMixtureModel(**params)
 
     def get_log_likelihood(self, X):
         lhood = 0.

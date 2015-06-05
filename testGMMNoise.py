@@ -6,6 +6,7 @@ import util
 from util import *
 import numpy as np
 import models
+import models.GaussianMixtures
 import mompy as mp
 import cvxopt
 import sys
@@ -16,6 +17,34 @@ import models.GaussianMixtures
 
 from cvxopt import solvers
 solvers.options['show_progress'] = False
+
+def M_polygmm(gm, X, degmm=3, degobs=5):
+    tol= 1e-2
+    k = gm.k
+    
+    monos = gm.polymom_monos(degmm)
+    constraints = gm.polymom_all_constraints(degobs)
+    xis = gm.sym_means
+    covs = gm.sym_covs
+    sym_all = xis + covs
+    MM = mp.MomentMatrix(degmm, sym_all, morder='grevlex', monos=monos)
+    constraints_noisy = gm.polymom_all_constraints_samples(degobs, X)
+    solsdp_noisy = mp.solvers.solve_generalized_mom_coneqp(MM, constraints_noisy)
+        
+        
+    #sol_noisy = mp.extractors.extract_solutions_dreesen_proto(MM, solsdp_noisy['x'], Kmax = k)
+    sol_noisy = mp.extractors.extract_solutions_lasserre(MM, solsdp_noisy['x'], Kmax = k)
+    # M should always be k by d
+    Mlist = []
+    Clist = []
+    for dim in xis:
+        Mlist.append(sol_noisy[dim])
+    for dim in covs:
+        Clist.append(sol_noisy[dim])
+    
+    M_ = sc.column_stack(Mlist)
+    C_ = sc.column_stack(Clist)
+    return M_,C_
 
 def M_polymom(gm, X, degmm=3, degobs=5):
     tol= 1e-2
@@ -119,12 +148,12 @@ def test_all_methods(args):
     sc.random.seed(args.seed)
     
     estimators = [M_EM, M_Spectral, M_polymom, M_true]
-    estimators = [M_EM,  M_Spectral, M_polymom, M_true]
+    estimators = [M_EM,  M_Spectral, M_polymom, M_polygmm, M_true]
     totalerror = Counter()
     totalerrorC = Counter()
 
     for j in xrange(numtrials):
-        gm = models.GaussianMixtures.GaussianMixtureModel.generate('', k, d, means=typemean, cov=typecov, gaussian_precision=1)
+        gm = models.GaussianMixtures.GaussianMixtureModel.generate(k, d, means=typemean, cov=typecov, gaussian_precision=1)
         X = gm.sample(numsamp)
         Mstar = gm.means.T
 
@@ -154,6 +183,10 @@ def test_all_methods(args):
       (k,d,numsamp, typemean, typecov, numtrials)
     print args
     print totalerror
+
+    with open('resultsgmm', 'a') as f:
+        f.write('\n' + str(args) + '\n' + str(totalerror) + '\n')
+        f.write('****************\n')
     #print totalerrorC
     print gm.sigmas
     
