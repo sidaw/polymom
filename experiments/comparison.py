@@ -35,11 +35,11 @@ def do_dreesen(model, data, maxdeg=3):
 
     return model["w"], params
 
-def do_lasserre(model, data, maxdeg=3, maxcontrs=-1):
+def do_lasserre(model, data, maxdeg=2, maxcontrs=-1):
     if isinstance(model, MixtureModel):
         return lasserre.solve_mixture_model(model, data, maxdeg, maxcontrs=-1)
 
-def do_lasserreconstr(model, data, maxdeg=3, maxcontrs=6):
+def do_lasserreconstr(model, data, maxdeg=3, maxcontrs=-1):
     if isinstance(model, MixtureModel):
         return lasserre.solve_mixture_model(model, data, maxdeg, maxcontrs = maxcontrs)
 
@@ -84,7 +84,7 @@ def do_command(args):
     np.random.seed(args.seed)
     #methods = [("EM", do_em), ("TPM", do_tpm), ("Lasserre", do_lasserre), ("Dreesen", do_dreesen)]
     #methods = [("EM", do_em), ("TPM", do_tpm),("Lasserre", do_lasserre)] #, ("Dreesen", do_dreesen)]
-    methods = [("EM", do_em), ("TPM", do_tpm),("Lasserre", do_lasserre), ("Lasserreconstr", do_lasserreconstr)] #, ("Dreesen", do_dreesen)]
+    methods = [("EM", do_em), ("TPM", do_tpm),("Lasserre2", do_lasserre), ("Lasserre3", do_lasserreconstr)] #, ("Dreesen", do_dreesen)]
     avg_paramserror = Counter(); avg_nll = Counter();
     for i in xrange(args.trials):
         model = MixtureModel.generate(k = args.k, d = args.d)

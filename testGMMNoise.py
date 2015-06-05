@@ -156,7 +156,7 @@ def test_all_methods(args):
     sc.random.seed(args.seed)
     
     estimators = [M_EM, M_Spectral, M_polymom, M_true]
-    estimators = [M_EM, M_Spectral, M_polymom, M_polygmm, M_true]
+    estimators = [M_EM, M_Spectral, M_polygmm, M_true]
     totalerror = Counter()
     totalerrorC = Counter()
 

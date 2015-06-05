@@ -48,12 +48,9 @@ def do_lasserre(model, data, maxdeg=3, maxcontrs=-1):
     syms = model.param_symbols()
     #ipdb.set_trace()    
     M = MomentMatrix(maxdeg, syms, morder='grevlex')
-    if maxcontrs>0:
-        sum1eqns = get_sumto1constraints(syms, maxcontrs)
-        solsdp = solvers.solve_generalized_mom_coneqp(M, eqns+sum1eqns, None)
-    else:
-        solsdp = solvers.solve_generalized_mom_coneqp(M, eqns, None)
-#solsdp = solvers.solve_basic_constraints(M, eqns, slack=1e-5)
+    
+    solsdp = solvers.solve_generalized_mom_coneqp(M, eqns, None)
+    #solsdp = solvers.solve_basic_constraints(M, eqns, slack=1e-5)
     sol = extractors.extract_solutions_lasserre(M, solsdp['x'], Kmax=model.k, tol=1e-5)
     #sol = extractors.extract_solutions_dreesen(M, solsdp['x'], Kmax=model.k)
     #sol = extractors.extract_solutions_dreesen_proto(M, solsdp['x'], Kmax=model.k)

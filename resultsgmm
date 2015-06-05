@@ -308,3 +308,73 @@ Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='c
 Counter({'M_Spectral': 2.6620285682348461, 'M_EM': 0.45021556297710302, 'M_polygmm': 0.43773744591793567, 'M_polymom': 0.43466176646661669, 'M_true': 0.0})
 0.45 & 2.66 & 0.44 &
 ****************
+
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='constrained')
+Counter({'M_Spectral': 7.5164419990318976, 'M_EM': 0.49308490538209448, 'M_polygmm': 0.38058397178798198, 'M_true': 0.0})
+0.49 & 7.52 & 0.38 &
+****************
+
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='constrained')
+Counter({'M_Spectral': 24.942396692014878, 'M_polygmm': 0.71282694777135602, 'M_EM': 0.52572306778948652, 'M_true': 0.0})
+0.53 & 24.94 & 0.71 &
+****************
+
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='constrained')
+Counter({'M_Spectral': 7.5164419990318976, 'M_EM': 0.49308490538209448, 'M_polygmm': 0.38058397178798031, 'M_true': 0.0})
+0.49 & 7.52 & 0.38 &
+****************
+
+Namespace(N=10000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='constrained')
+Counter({'M_Spectral': 2.5564622575528588, 'M_EM': 0.46790076774286443, 'M_polygmm': 0.3000684246638331, 'M_true': 0.0})
+0.47 & 2.56 & 0.30 &
+****************
+
+Namespace(N=100000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='constrained')
+Counter({'M_Spectral': 3.0184407546615368, 'M_EM': 0.34310918890849168, 'M_polygmm': 0.28871526550992355, 'M_true': 0.0})
+0.34 & 3.02 & 0.29 &
+****************
+
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='constrained')
+Counter({'M_polygmm': 6.4794063306751823, 'M_Spectral': 2.4257057228964563, 'M_EM': 0.64859229829585807, 'M_true': 0.0})
+0.65 & 2.43 & 6.48 &
+****************
+
+Namespace(N=10000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='constrained')
+Counter({'M_polygmm': 5.8933800021654275, 'M_Spectral': 3.5834789164696699, 'M_EM': 0.40107371494121952, 'M_true': 0.0})
+0.40 & 3.58 & 5.89 &
+****************
+
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='spherical', typemean='constrained')
+Counter({'M_polygmm': 4.106852193174694, 'M_Spectral': 2.3925053628605011, 'M_EM': 0.43237435723600226, 'M_true': 0.0})
+0.43 & 2.39 & 4.11 &
+****************
+
+Namespace(N=10000.0, d=2, k=2, seed=1, trials=10, typecov='spherical', typemean='constrained')
+Counter({'M_Spectral': 0.68378853827944164, 'M_polygmm': 0.35515805633008179, 'M_EM': 0.17510616994374914, 'M_true': 0.0})
+0.18 & 0.68 & 0.36 &
+****************
+
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='spherical', typemean='constrained')
+Counter({'M_Spectral': 2.288842533287057, 'M_EM': 0.44110131527782104, 'M_polygmm': 0.40470074061984634, 'M_true': 0.0})
+0.44 & 2.29 & 0.40 &
+****************
+
+Namespace(N=10000.0, d=2, k=2, seed=1, trials=10, typecov='spherical', typemean='constrained')
+Counter({'M_Spectral': 0.95474279705106768, 'M_polygmm': 0.36982275293139089, 'M_EM': 0.27861469851467269, 'M_true': 0.0})
+0.28 & 0.95 & 0.37 &
+****************
+
+Namespace(N=1000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='constrained')
+Counter({'M_Spectral': 7.5164419990318976, 'M_EM': 0.49308490538209448, 'M_polygmm': 0.38058397178798092, 'M_true': 0.0})
+0.49 & 7.52 & 0.38 &
+****************
+
+Namespace(N=10000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='constrained')
+Counter({'M_Spectral': 2.5564622575528588, 'M_EM': 0.46790076774286443, 'M_polygmm': 0.3000684246638336, 'M_true': 0.0})
+0.47 & 2.56 & 0.30 &
+****************
+
+Namespace(N=100000.0, d=2, k=2, seed=1, trials=10, typecov='diagonal', typemean='constrained')
+Counter({'M_Spectral': 3.0184407546615368, 'M_EM': 0.34310918890849168, 'M_polygmm': 0.28871526550992344, 'M_true': 0.0})
+0.34 & 3.02 & 0.29 &
+****************
