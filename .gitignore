@@ -1,3 +1,9 @@
+# Temporary Files
+*.swp
+*.swo
+*.pyc
+*.pyo
+*.o
 cvxopt
 cvxpy
 sympy
