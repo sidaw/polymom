@@ -222,7 +222,7 @@ class GaussianMixtureModel(Model):
                 for i,inds in enumerate(allinds):
                     if i == k: break
                     M[inds, i] = 1
-                M = M + 0.1*sc.rand(d,k)
+                M = M + 0.3*sc.rand(d,k)
             else:
                 raise NotImplementedError
         elif means == "constrained":
@@ -269,7 +269,7 @@ class GaussianMixtureModel(Model):
             # Using 1/gamma instead of inv_gamma
             sigmas = []
             for i in xrange(k):
-                sigmak = 2*sc.random.rand()+2
+                sigmak = 1
                 sigmas = sigmas + [ sigmak * eye(d) ]
             S = array(sigmas)
 
@@ -281,7 +281,7 @@ class GaussianMixtureModel(Model):
             # Using 1/gamma instead of inv_gamma
             sigmas = []
             for i in xrange(k):
-                sigmak = [2*sc.random.rand()+4 for i in xrange(d)]
+                sigmak = [0.5*sc.random.rand()+0.5 for i in xrange(d)]
                 sigmas = sigmas + [ sc.diag(sigmak) ]
             S = array(sigmas)
         elif isinstance(cov, sc.ndarray):
