@@ -1,6 +1,10 @@
 # polymom
-#### Estimating Mixture Models via Mixtures of Polynomials
-Sida Wang, Percy Liang, Arun Chaganty
+
+> Sida I. Wang, Percy Liang, Arun Chaganty.
+>
+> ####Estimating Mixture Models via Mixtures of Polynomials.
+>
+> NIPS 2015.
 
 Provide a list of polynomial moment constraints, and recovery parameters of mixture models. See our NIPS paper for details.
 
@@ -8,7 +12,9 @@ The ipython notebooks [MixtureOfGaussians.ipynb](https://github.com/sidaw/polymo
 and [MixtureLinearRegressions.ipynb](https://github.com/sidaw/polymom/blob/master/MixtureLinearRegressions.ipynb)
 shows how to use polymom for these mixture models.
 
-requires [cvxopt](http://cvxopt.org/).
+See [the codalab worksheet](https://worksheets.codalab.org/worksheets/0xca42b883b1f9481989cfb02fe693649f/) for an executable version, and see [mompy](https://github.com/sidaw/mompy) for our Generalized Moment Problem solver.
+
+requires [cvxopt](http://cvxopt.org/) and sympy.
 
 
 
